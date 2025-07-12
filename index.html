@@ -148,13 +148,14 @@
     let timeoutId = null; // Para el temporizador de tiempo de espera del escáner
     const SCAN_DURATION_MS = 7000; // 7 segundos para escanear
     let lastScannedCode = null; // Almacena el último código escaneado o ingresado
-    let lastSearchTerm = null; // Este ahora será el mismo que lastScannedCode para simplificar
+    let lastSearchTerm = null; // Almacena el último término de búsqueda (nombre o código)
 
     // URLs de búsqueda para las tiendas
     const searchUrls = {
         'lider': 'https://www.lider.cl/supermercado/search?query=',
         'sodimac': 'https://www.sodimac.cl/sodimac-cl/search/?q=',
-        'goUpc': 'https://go-upc.com/search?q=' // URL para go-upc.com
+        // La URL de Go-UPC ya no se usa para redirección directa, sino para la API de OFF
+        'openFoodFactsApi': 'https://world.openfoodfacts.org/api/v0/product/'
     };
 
     // Función para redirigir a una tienda
@@ -172,16 +173,31 @@
     // Función principal para buscar el producto
     async function buscarProducto(codigo) {
       lastScannedCode = codigo; // Guarda el código para futuras búsquedas
-      lastSearchTerm = codigo; // Establece el término de búsqueda para Lider/Sodimac
+      let searchTermForLider = codigo; // Por defecto, usa el código de barras
 
       const infoDisplay = document.getElementById('info');
-      infoDisplay.innerHTML = `Código detectado: <strong>${codigo}</strong><br>Buscando en go-upc.com...`;
+      infoDisplay.innerHTML = `Código detectado: <strong>${codigo}</strong><br>Buscando nombre en Open Food Facts...`;
 
-      // Redirige directamente a go-upc.com
-      redirectToStore(codigo, 'goUpc');
+      try {
+        const response = await fetch(`${searchUrls['openFoodFactsApi']}${codigo}.json`);
+        const data = await response.json();
 
-      // Actualiza el mensaje en la página original
-      infoDisplay.innerHTML = `Redirigido a go-upc.com con: <strong>${codigo}</strong>.<br>Puedes usar los botones de abajo para buscar en otras tiendas.`;
+        if (data.status === 1 && data.product && data.product.product_name) {
+          const productName = data.product.product_name;
+          searchTermForLider = productName; // Usa el nombre del producto si se encuentra
+          infoDisplay.innerHTML = `Producto encontrado: <strong>${productName}</strong><br>Redirigiendo a Lider.cl...`;
+          console.log("Nombre del producto de Open Food Facts:", productName);
+        } else {
+          infoDisplay.innerHTML = `Producto no encontrado en Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
+          console.log("Producto no encontrado en Open Food Facts para el código:", codigo);
+        }
+      } catch (err) {
+        console.error("Error al consultar la API de Open Food Facts:", err);
+        infoDisplay.innerHTML = `Error al consultar Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
+      }
+
+      lastSearchTerm = searchTermForLider; // Guarda el término final usado para Lider (nombre o código)
+      redirectToStore(searchTermForLider, 'lider'); // Redirige automáticamente a Lider.cl
     }
 
     // Función para iniciar la cámara (se llama al presionar el botón)
@@ -263,7 +279,7 @@
             setTimeout(() => {
               stopScanner();
               document.getElementById('info').innerHTML = `¡Código detectado! Procesando: <strong>${codigo}</strong>...`; 
-              buscarProducto(codigo); // Llama a la nueva función buscarProducto
+              buscarProducto(codigo); // Llama a la función buscarProducto
             }, 500);
 
           } else {
@@ -313,7 +329,7 @@
       if (codigoManual) {
         if (scannerActive) { stopScanner(); }
         document.getElementById('info').innerText = `Buscando código manual: ${codigoManual}...`;
-        buscarProducto(codigoManual); // Llama a la nueva función buscarProducto
+        buscarProducto(codigoManual);
       } else {
         document.getElementById('info').innerText = "Por favor, ingresa un código de barras para buscar.";
       }
@@ -321,8 +337,10 @@
 
     document.getElementById('lider-search-button').addEventListener('click', () => {
         if (scannerActive) { stopScanner(); }
-        // Usa el último código escaneado/ingresado para buscar en Lider
-        if (lastScannedCode) {
+        // Si hay un último término de búsqueda (nombre o código), úsalo
+        if (lastSearchTerm) {
+            redirectToStore(lastSearchTerm, 'lider');
+        } else if (lastScannedCode) { // Fallback al código escaneado si por alguna razón no hay lastSearchTerm
             redirectToStore(lastScannedCode, 'lider');
         } else {
             document.getElementById('info').innerText = "No hay un código escaneado o ingresado para buscar en Lider.cl.";
@@ -331,9 +349,10 @@
 
     document.getElementById('sodimac-search-button').addEventListener('click', () => {
         if (scannerActive) { stopScanner(); }
-        // Usa el último código escaneado/ingresado para buscar en Sodimac
-        if (lastScannedCode) {
-            redirectToStore(lastScannedCode, 'sodimac');
+        // Si hay un último término de búsqueda (nombre o código), úsalo
+        const termToUse = lastSearchTerm || lastScannedCode;
+        if (termToUse) {
+            redirectToStore(termToUse, 'sodimac');
         } else {
             document.getElementById('info').innerText = "No hay un código escaneado o ingresado para buscar en Sodimac.cl.";
         }
