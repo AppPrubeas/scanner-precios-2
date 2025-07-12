@@ -44,7 +44,7 @@
       width: auto; /* Permite que el ancho se ajuste automáticamente */
       height: auto; /* Permite que el alto se ajuste automáticamente */
       object-fit: cover;
-      object-position: 90% center; /* Centra la imagen de la cámara */
+      object-position: center; /* Centra la imagen de la cámara */
       display: block; /* Elimina espacios extra */
     }
 
@@ -283,8 +283,12 @@
           target: document.querySelector('#scanner-container'),
           constraints: {
             facingMode: "environment",
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 }
+            // --- CAMBIO AQUÍ: Nuevas restricciones para intentar centrar la cámara ---
+            // Intenta pedir una resolución específica, priorizando aspecto 16:9 o 4:3
+            width: { ideal: window.innerWidth > 720 ? 1280 : 720 }, // Preferir 1280px de ancho para pantallas grandes, 720px para móviles
+            height: { ideal: window.innerWidth > 720 ? 720 : 480 }, // Ajustar alto a un aspecto 16:9 o 4:3
+            aspectRatio: { ideal: window.innerWidth > 720 ? 1.777 : 1.333 } // 16:9 o 4:3
+            // ---------------------------------------------------------------------
           }
         },
         decoder: {
@@ -372,7 +376,7 @@
     document.getElementById('sodimac-search-button').addEventListener('click', () => {
         const termToUse = lastSearchTerm || lastScannedCode; 
         if (termToUse) {
-            redirectToStore(termToUse, 'sodimac');
+            redirectToStore(termToMise, 'sodimac');
         } else {
             document.getElementById('info').innerText = "No hay un código escaneado o término para buscar.";
         }
