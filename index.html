@@ -30,8 +30,8 @@
     /* Estilos para el contenedor del escáner de la cámara */
     #scanner-container {
       width: 100%;
-      max-width: 230px; /* ANCHO AUMENTADO EN UN 15% (antes 200px) */
-      height: 172px; /* ALTURA AUMENTADA EN UN 15% (antes 150px, redondeado) */
+      max-width: 230px; /* Ancho aumentado en un 15% (antes 200px) */
+      height: 172px; /* Altura aumentada en un 15% (antes 150px, redondeado) */
       margin: auto; /* Centrar horizontalmente */
       border: 2px solid white; /* Borde blanco alrededor del video */
       margin-bottom: 20px; /* Espacio debajo del contenedor */
@@ -160,24 +160,27 @@
         const response = await fetch(openFoodFactsUrl);
         const data = await response.json();
 
+        // Verifica si la API devolvió datos válidos y un nombre de producto
         if (data.status === 1 && data.product && data.product.product_name) {
           productName = data.product.product_name;
           infoDisplay.innerHTML = `Producto encontrado: <strong>${productName}</strong><br>Redirigiendo a Lider.cl...`;
           console.log("Nombre de producto de Open Food Facts:", productName);
         } else {
+          // Si no se encuentra el producto o el nombre en Open Food Facts
           infoDisplay.innerHTML = `Producto no encontrado en Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
           console.log("Producto no encontrado en Open Food Facts para el código:", codigo);
         }
       } catch (err) {
+        // Manejo de errores de red o API
         console.error("Error al consultar Open Food Facts:", err);
         infoDisplay.innerHTML = `Error al consultar Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
       }
 
-      // Decidir qué término de búsqueda usar para Lider.cl
+      // **Lógica clave: Si se obtuvo un nombre, úsalo; de lo contrario, usa el código.**
       const searchTerm = productName ? productName : codigo;
       const urlLider = `https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(searchTerm)}`;
       
-      // Abrir la URL en una nueva pestaña
+      // Abre la URL en una nueva pestaña/ventana
       window.open(urlLider, '_blank');
     }
 
@@ -210,7 +213,7 @@
 
       // Evento que se dispara cuando Quagga detecta un código de barras
       Quagga.onDetected(result => {
-        const codigo = result.codeResult.code;
+        const codigo = result.codeResult.code; // Este es el número del código
         console.log("Código detectado:", codigo);
         Quagga.stop(); // Detener el escáner después de una detección exitosa
         buscarProductoYRedirigir(codigo); // Inicia el proceso de búsqueda y redirección
@@ -219,7 +222,7 @@
 
     // Agrega un event listener al botón de búsqueda manual
     document.getElementById('manual-search-button').addEventListener('click', () => {
-      const codigoManual = document.getElementById('manual-code-input').value.trim(); // Obtiene el valor del input
+      const codigoManual = document.getElementById('manual-code-input').value.trim(); // Obtiene el número del input
       if (codigoManual) {
         // Detener Quagga si está activo antes de buscar manualmente para evitar conflictos
         if (typeof Quagga !== 'undefined' && Quagga.initialized) {
@@ -227,7 +230,7 @@
             console.log("Escáner detenido para búsqueda manual.");
         }
         document.getElementById('info').innerText = `Buscando código manual: ${codigoManual}...`;
-        buscarProductoYRedirigir(codigoManual); // Realiza la búsqueda con el código manual
+        buscarProductoYRedirigir(codigoManual); // Realiza la búsqueda con el número del código manual
       } else {
         document.getElementById('info').innerText = "Por favor, ingresa un código de barras para buscar.";
       }
