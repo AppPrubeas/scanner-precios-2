@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Escáner de Producto</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+  <script src="https://unpkg.com/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
     /* Estilos generales del cuerpo de la página */
@@ -143,17 +143,11 @@
       align-items: center;
       z-index: 1000;
       overflow: hidden; /* Asegura que el video no se desborde */
-    }
-
-    /* El video del scanner se posiciona aquí, ZXing-JS inyecta el <video> */
-    #scanner-container video {
-        width: 100%;
-        height: 100%;
-        object-fit: cover; /* Asegura que el video cubra todo el contenedor */
-        object-position: center; /* Centra el contenido del video */
-        /* OPCIONAL: Si la imagen se ve volteada como un espejo, descomenta la siguiente línea */
-        /* transform: scaleX(-1); */ 
-        filter: brightness(1.2); /* Ajuste opcional para mejorar la visibilidad */
+      /* Flexbox para centrar el contenido, pero solo si Quagga no lo hace */
+      display: flex; /* Aseguramos que sea flex al inicio para evitar parpadeos */
+      flex-direction: column; /* Apila elementos verticalmente */
+      align-items: center; /* Centra horizontalmente */
+      justify-content: center; /* Centra verticalmente */
     }
 
     /* Marco visual para el código de barras - Centrado absoluto */
@@ -168,6 +162,21 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%); /* Centrado perfecto */
+    }
+
+    /* Estilos MUY IMPORTANTES para los elementos de video/canvas inyectados por Quagga */
+    #scanner-container video,
+    #scanner-container canvas {
+        position: absolute; /* Para que ocupen toda la pantalla dentro del contenedor */
+        top: 0;
+        left: 0;
+        width: 100% !important; /* Forzar el 100% de ancho */
+        height: 100% !important; /* Forzar el 100% de alto */
+        object-fit: cover; /* Asegura que el video/canvas cubra todo el contenedor */
+        object-position: center; /* Centra el contenido del video/canvas */
+        /* Si la imagen se ve volteada como un espejo, descomenta una de estas líneas si es necesario */
+        /* transform: scaleX(-1); */ /* Para voltear horizontalmente si es necesario */
+        /* filter: brightness(1.2); */ /* Ajuste opcional para mejorar la visibilidad */
     }
     
   </style>
@@ -208,13 +217,9 @@
     // Variables para el estado y los datos
     let scannerActive = false; // Indica si la cámara está activa
     let timeoutId = null; // Para el temporizador de tiempo de espera del escáner
-    const SCAN_DURATION_MS = 15000; // Aumentado a 15 segundos para dar más tiempo
+    const SCAN_DURATION_MS = 15000; // 15 segundos para escanear
     let lastScannedCode = null; // Almacena el último código escaneado o ingresado
     let lastSearchTerm = null; // Almacena el último término de búsqueda (nombre o código)
-
-    // Instancia de ZXing-JS
-    const codeReader = new ZXing.BrowserBarcodeReader();
-    // No necesitamos currentStream directamente si usamos codeReader.reset()
 
     // URLs de búsqueda para las tiendas
     const searchUrls = {
@@ -265,75 +270,101 @@
       redirectToStore(searchTermForLider, 'lider'); 
     }
 
-    // Función para iniciar la cámara con ZXing-JS
+    // Función para iniciar la cámara (se llama al presionar el botón)
     async function startScanner() {
       document.getElementById('content-overlay').style.display = 'none';
-      document.getElementById('scanner-container').style.display = 'flex';
+      document.getElementById('scanner-container').style.display = 'flex'; // Aseguramos que sea 'flex' para mostrarlo
       document.getElementById('info').innerText = 'Activando cámara...';
       document.getElementById('scan-button').disabled = true;
 
       try {
-        const videoInputDevices = await codeReader.getVideoInputDevices();
-        if (videoInputDevices.length === 0) {
-            const errorMsg = 'Error: No se encontraron dispositivos de video (cámaras).';
-            document.getElementById('info').innerText = errorMsg;
-            console.error(errorMsg);
-            stopScanner();
-            return;
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        let selectedDeviceId = null;
+
+        if (videoDevices.length === 0) {
+            throw new Error("No se encontraron cámaras de video.");
         }
 
-        // Intenta encontrar una cámara trasera (main, environment, back, rear)
-        let selectedDeviceId = null;
-        const mainCamera = videoInputDevices.find(device => 
-            device.label.toLowerCase().includes('main') || 
-            device.label.toLowerCase().includes('principal') || 
-            device.label.toLowerCase().includes('environment') || 
-            device.label.toLowerCase().includes('back') ||
-            device.label.toLowerCase().includes('rear')
+        const mainCamera = videoDevices.find(device => 
+          device.label.toLowerCase().includes('main') || 
+          device.label.toLowerCase().includes('principal') || 
+          device.label.toLowerCase().includes('environment') || 
+          device.label.toLowerCase().includes('back') ||
+          device.label.toLowerCase().includes('rear')
         );
 
         if (mainCamera) {
-            selectedDeviceId = mainCamera.deviceId;
-            console.log("Usando la cámara trasera:", mainCamera.label);
+          selectedDeviceId = mainCamera.deviceId;
+          console.log("Intentando usar la 'Main Camera' (o equivalente):", mainCamera.label);
         } else {
-            // Si no hay trasera, usa la primera disponible
-            selectedDeviceId = videoInputDevices[0].deviceId;
-            console.log("No se encontró cámara trasera, usando la primera disponible:", videoInputDevices[0].label);
+          selectedDeviceId = videoDevices[0].deviceId;
+          console.log("No se encontró 'Main Camera', usando la primera disponible:", videoDevices[0].label);
         }
 
-        // Decodificar desde el dispositivo de video
-        // El segundo argumento es el ID del elemento donde ZXing inyectará el <video>
-        codeReader.decodeFromVideoDevice(selectedDeviceId, 'scanner-container', (result, err) => {
-            if (result) {
-                console.log('Código detectado con ZXing:', result.getText());
-                if (scannerActive) { // Asegura que solo procesamos el primero
-                    scannerActive = false; // Desactiva para evitar múltiples detecciones
-                    clearTimeout(timeoutId); // Limpia el temporizador
-                    
-                    const barcodeFrame = document.getElementById('barcode-frame');
-                    barcodeFrame.style.borderColor = '#00FF00'; // Marco verde al detectar
+        const constraints = {
+          audio: false,
+          video: { 
+              deviceId: { exact: selectedDeviceId },
+              // Altura y anchura ideales para Quagga. A veces, resoluciones muy altas dan problemas.
+              width: { ideal: 1280 }, // Intenta con una resolución ideal
+              height: { ideal: 720 }
+          }
+        };
 
-                    stopScanner(); // Detiene el escáner
-                    document.getElementById('info').innerHTML = `¡Código detectado! Procesando: <strong>${result.getText()}</strong>...`; 
-                    buscarProducto(result.getText()); // Llama a la función de búsqueda
-                }
+        // Inicializar Quagga
+        await new Promise((resolve, reject) => {
+          Quagga.init({
+            inputStream: {
+              type: "LiveStream",
+              target: document.querySelector('#scanner-container'),
+              constraints: constraints
+            },
+            decoder: {
+              readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader", "i2of5_reader"]
+            },
+            locate: true, // Importante para la detección visual
+            patchSize: 'medium', // Ajusta el tamaño de la región de búsqueda
+            halfSample: false, // Procesa la imagen completa, más lento pero más preciso
+            numOfWorkers: 0, // 0 workers para evitar problemas de CORS y threading
+            frequency: 10 // Reduce la frecuencia de detección, puede ayudar con la estabilidad
+          }, function(err) {
+            if (err) {
+              console.error("Error al inicializar Quagga:", err);
+              reject(err);
+            } else {
+              console.log("Quagga inicializado correctamente. Cámara en vivo.");
+              Quagga.start();
+              scannerActive = true;
+              document.getElementById('info').innerText = 'Cámara activa. Enfoca el código.';
+              resolve();
             }
-            if (err && !(err instanceof ZXing.NotFoundException)) {
-                // Solo loguea errores que no sean 'NotFoundException' (que es normal mientras escanea)
-                console.error("Error de escaneo con ZXing:", err);
-                if (scannerActive) { // Solo si el escáner sigue activo y no es el timeout
-                    document.getElementById('info').innerText = `Error en el escáner: ${err.message}.`;
-                    stopScanner(); // Detiene para permitir al usuario reintentar
-                }
-            }
+          });
         });
-        
-        scannerActive = true;
-        document.getElementById('info').innerText = 'Cámara activa. Enfoca el código.';
-        console.log("ZXing-JS inicializado y cámara activa.");
 
-        // Reinicia el temporizador para detener el escáner si no detecta nada
-        clearTimeout(timeoutId);
+        // Configurar detección de Quagga
+        Quagga.onDetected(result => {
+          if (scannerActive && result && result.codeResult && result.codeResult.code) {
+            const codigo = result.codeResult.code;
+            console.log("Código detectado:", codigo);
+            clearTimeout(timeoutId); // Limpia el temporizador si se detecta un código
+
+            const barcodeFrame = document.getElementById('barcode-frame');
+            barcodeFrame.style.borderColor = '#00FF00'; // Marco verde
+
+            // Pequeño retardo antes de detener para asegurar la visualización del cambio
+            setTimeout(() => {
+              stopScanner();
+              document.getElementById('info').innerHTML = `¡Código detectado! Procesando: <strong>${codigo}</strong>...`; 
+              buscarProducto(codigo); // Llama a la función buscarProducto
+            }, 500);
+
+          } else {
+            // console.log("No se detectó código aún."); // Demasiado ruidoso, comentar en producción
+          }
+        });
+
+        // Temporizador de tiempo de espera
         timeoutId = setTimeout(() => {
           if (scannerActive) {
             console.warn(`Tiempo de escaneo agotado (${SCAN_DURATION_MS / 1000}s), no se detectó ningún código.`);
@@ -348,25 +379,30 @@
             document.getElementById('info').innerText = 'Permiso de cámara denegado. Por favor, habilita el acceso a la cámara en la configuración de tu navegador o dispositivo.';
             console.error("Permiso de cámara denegado:", error);
         } else if (error.name === 'NotFoundError') {
-            document.getElementById('info').innerText = 'No se encontró una cámara compatible.';
+            document.getElementById('info').innerText = 'No se encontró una cámara compatible en este dispositivo.';
             console.error("No se encontró cámara:", error);
-        } else {
-            document.getElementById('info').innerText = `Error al iniciar el escáner: ${error.message}.`;
-            console.error("Error general al iniciar escáner ZXing:", error);
+        } else if (error.message && error.message.includes("could not start video source")) {
+            document.getElementById('info').innerText = 'Error al iniciar la fuente de video. Es posible que otra aplicación esté usando la cámara o haya un problema de configuración.';
+            console.error("Error al iniciar video source:", error);
         }
-        stopScanner(); // Asegura que los botones se habiliten y la interfaz vuelva al estado inicial
+        else {
+            document.getElementById('info').innerText = `Error al iniciar el escáner: ${error.message}.`;
+            console.error("Error general al iniciar escáner Quagga:", error);
+        }
+        stopScanner(); // Asegura que los botones se habiliten
       } finally {
         document.getElementById('scan-button').disabled = false;
       }
     }
 
     // Función para detener la cámara y volver a la interfaz principal
-    async function stopScanner() {
+    function stopScanner() {
       if (scannerActive) {
-        codeReader.reset(); // Esto detiene la cámara y libera los recursos
+        Quagga.offDetected(); // Limpia los listeners de detección
+        Quagga.stop(); // Detiene Quagga
         scannerActive = false;
         clearTimeout(timeoutId);
-        console.log("Cámara detenida por ZXing-JS.");
+        console.log("Cámara detenida.");
       }
       const barcodeFrame = document.getElementById('barcode-frame');
       barcodeFrame.style.borderColor = '#FFD700'; // Vuelve al color original
@@ -391,8 +427,7 @@
 
     document.getElementById('lider-search-button').addEventListener('click', () => {
         if (scannerActive) { stopScanner(); }
-        // Usa el último término de búsqueda que se usó para Lider (nombre o código)
-        const termToUse = lastSearchTerm || lastScannedCode; // lastSearchTerm tiene prioridad
+        const termToUse = lastSearchTerm || lastScannedCode;
         if (termToUse) {
             redirectToStore(termToUse, 'lider');
         } else {
@@ -402,8 +437,7 @@
 
     document.getElementById('sodimac-search-button').addEventListener('click', () => {
         if (scannerActive) { stopScanner(); }
-        // Usa el último término de búsqueda que se usó para Lider (nombre o código)
-        const termToUse = lastSearchTerm || lastScannedCode; // lastSearchTerm tiene prioridad
+        const termToUse = lastSearchTerm || lastScannedCode;
         if (termToUse) {
             redirectToStore(termToUse, 'sodimac');
         } else {
