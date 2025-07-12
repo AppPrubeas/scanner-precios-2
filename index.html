@@ -6,33 +6,119 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://unpkg.com/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
   <style>
+    /* Estilos generales del cuerpo de la página */
     body {
       font-family: Arial, sans-serif;
-      background-color: #0062E3; /* azul Lider */
-      color: white;
-      text-align: center;
+      background-color: #0062E3; /* Color azul característico de Lider */
+      color: white; /* Texto en blanco para contraste */
+      text-align: center; /* Centrar todo el contenido */
       padding: 20px;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh; /* Asegura que ocupe al menos toda la altura de la vista */
+      box-sizing: border-box; /* Incluye padding en el tamaño total */
     }
+
+    /* Estilos para el logo de Lider */
     img.logo {
-      max-width: 180px;
-      margin-bottom: 20px;
+      max-width: 180px; /* Tamaño máximo del logo */
+      margin-bottom: 20px; /* Espacio debajo del logo */
     }
+
+    /* Estilos para el contenedor del escáner de la cámara */
     #scanner-container {
       width: 100%;
-      max-width: 400px;
-      margin: auto;
-      border: 2px solid white;
+      max-width: 400px; /* Ancho máximo para el video del escáner */
+      margin: auto; /* Centrar horizontalmente */
+      border: 2px solid white; /* Borde blanco alrededor del video */
+      margin-bottom: 20px; /* Espacio debajo del contenedor */
+      position: relative; /* Necesario para posicionar el video dentro */
+      overflow: hidden; /* Oculta cualquier parte del video que se desborde */
+      border-radius: 8px; /* Bordes ligeramente redondeados */
     }
-    video {
-      width: 100%;
+
+    /* Estilos para el elemento de video dentro del contenedor del escáner */
+    #scanner-container video {
+      width: 100%; /* El video ocupa todo el ancho del contenedor */
+      height: auto; /* Altura automática para mantener la proporción */
+      display: block; /* Elimina espacios extra debajo del video */
     }
+
+    /* Estilos para el área de información y resultados */
     #info {
-      margin-top: 20px;
-      font-size: 18px;
+      margin-top: 20px; /* Espacio encima del texto de información */
+      font-size: 18px; /* Tamaño de fuente para la información */
+      background-color: rgba(255, 255, 255, 0.1); /* Fondo semitransparente */
+      padding: 15px;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 400px;
+      box-sizing: border-box;
     }
+
+    /* Estilos para los enlaces */
     a {
-      color: #FFD700;
-      text-decoration: underline;
+      color: #FFD700; /* Color amarillo Lider para los enlaces */
+      text-decoration: underline; /* Subrayado para indicar que es un enlace */
+    }
+
+    /* Estilos para el contenedor de la entrada manual */
+    #manual-input-container {
+      margin-top: 30px; /* Más espacio para separar del escáner */
+      width: 100%;
+      max-width: 400px;
+      display: flex; /* Usar flexbox para alinear el input y el botón */
+      justify-content: center; /* Centrar los elementos flex */
+      align-items: center; /* Alinear verticalmente */
+      flex-wrap: wrap; /* Permite que los elementos se envuelvan en pantallas pequeñas */
+    }
+
+    /* Estilos para el campo de entrada de texto manual */
+    #manual-code-input {
+      padding: 12px;
+      width: calc(80% - 10px); /* Ocupa el 80% del ancho, menos un margen */
+      max-width: 250px; /* Ancho máximo del input */
+      border: none;
+      border-radius: 5px;
+      margin-right: 10px; /* Espacio a la derecha del input */
+      color: #333; /* Color de texto oscuro para el input */
+      font-size: 16px;
+      box-sizing: border-box; /* Incluye padding en el tamaño */
+    }
+
+    /* Estilos para el botón de búsqueda manual */
+    #manual-search-button {
+      padding: 12px 25px; /* Relleno del botón */
+      background-color: #FFD700; /* Amarillo Lider */
+      color: #0062E3; /* Texto azul Lider */
+      border: none;
+      border-radius: 5px;
+      cursor: pointer; /* Cambiar cursor al pasar por encima */
+      font-weight: bold; /* Texto en negrita */
+      font-size: 16px;
+      transition: background-color 0.2s ease; /* Transición suave para el hover */
+    }
+
+    /* Estilo al pasar el mouse por encima del botón */
+    #manual-search-button:hover {
+      background-color: #e6c200; /* Un amarillo ligeramente más oscuro al pasar el mouse */
+    }
+
+    /* Media queries para pantallas más pequeñas (móviles) */
+    @media (max-width: 500px) {
+      #manual-input-container {
+        flex-direction: column; /* Apila el input y el botón en pantallas pequeñas */
+      }
+      #manual-code-input {
+        width: 90%; /* Más ancho en móviles */
+        margin-right: 0; /* Sin margen a la derecha */
+        margin-bottom: 10px; /* Espacio debajo del input */
+      }
+      #manual-search-button {
+        width: 90%; /* Ocupa casi todo el ancho en móviles */
+      }
     }
   </style>
 </head>
@@ -41,62 +127,100 @@
   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Lider_logo_2020.svg/512px-Lider_logo_2020.svg.png" alt="Lider" class="logo">
 
   <h1>Escáner de Producto</h1>
-  <p>Escanea un código de barras para buscar el producto en <strong>Lider.cl</strong></p>
+  <p>Escanea un código de barras o ingrésalo manualmente para buscar el producto en <strong>Lider.cl</strong></p>
 
   <div id="scanner-container"></div>
   <div id="info">Esperando escaneo...</div>
 
+  <div id="manual-input-container">
+    <input type="text" id="manual-code-input" placeholder="Ingresa el código manualmente">
+    <button id="manual-search-button">Buscar Código</button>
+  </div>
+
   <script>
+    /**
+     * Busca información de un producto en OpenFoodFacts.org usando su código de barras.
+     * Si lo encuentra, muestra el nombre del producto y un enlace para buscarlo en Lider.cl.
+     * Si no, ofrece buscar directamente el código en Lider.cl.
+     * @param {string} codigo - El código de barras a buscar.
+     */
     function buscarEnOpenFoodFacts(codigo) {
       const url = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
       fetch(url)
         .then(res => res.json())
         .then(data => {
-          if (data.status === 1) {
+          if (data.status === 1 && data.product) {
             const nombre = data.product.product_name || "Producto sin nombre";
             document.getElementById('info').innerHTML =
               `Producto: <strong>${nombre}</strong><br><a href="https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(nombre)}" target="_blank">Buscar en Lider.cl</a>`;
-            // También podrías abrirlo automáticamente si quieres:
-            // window.open(`https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(nombre)}`, '_blank');
           } else {
+            // Si no se encuentra en OpenFoodFacts o la respuesta no es válida
             document.getElementById('info').innerText = "Producto no encontrado en OpenFoodFacts.";
+            document.getElementById('info').innerHTML += `<br><a href="https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(codigo)}" target="_blank">Buscar '${codigo}' en Lider.cl</a>`;
           }
         })
         .catch(err => {
-          console.error(err);
-          document.getElementById('info').innerText = "Error consultando OpenFoodFacts.";
+          console.error("Error consultando OpenFoodFacts:", err);
+          document.getElementById('info').innerText = "Error al consultar la base de datos de productos.";
+          // Ofrecer la búsqueda en Lider.cl incluso si hay un error de red o API
+          document.getElementById('info').innerHTML += `<br><a href="https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(codigo)}" target="_blank">Buscar '${codigo}' en Lider.cl</a>`;
         });
     }
 
+    /**
+     * Inicializa y configura el escáner de códigos de barras usando Quagga2.
+     */
     function iniciarScanner() {
       Quagga.init({
         inputStream: {
-          type: "LiveStream",
-          target: document.querySelector('#scanner-container'),
+          type: "LiveStream", // Usa el video en tiempo real de la cámara
+          target: document.querySelector('#scanner-container'), // Dónde renderizar el video
           constraints: {
-            facingMode: "environment"
+            facingMode: "environment" // Preferir la cámara trasera en móviles
           }
         },
         decoder: {
-          readers: ["ean_reader"]
+          // Tipos de códigos de barras que Quagga debe intentar leer
+          readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader"]
         }
       }, function(err) {
         if (err) {
-          console.error(err);
-          document.getElementById('info').innerText = "Error iniciando la cámara.";
+          console.error("Error al iniciar la cámara:", err);
+          document.getElementById('info').innerText = "Error al iniciar la cámara. Asegúrate de dar permisos o intenta ingresar el código manualmente.";
+          document.getElementById('scanner-container').style.display = 'none'; // Oculta el contenedor del escáner
           return;
         }
-        Quagga.start();
+        console.log("Quagga iniciado correctamente.");
+        Quagga.start(); // Inicia el proceso de escaneo
       });
 
+      // Evento que se dispara cuando Quagga detecta un código de barras
       Quagga.onDetected(result => {
         const codigo = result.codeResult.code;
         document.getElementById('info').innerText = `Código detectado: ${codigo}`;
-        Quagga.stop();
-        buscarEnOpenFoodFacts(codigo);
+        Quagga.stop(); // Detener el escáner después de una detección exitosa
+        console.log("Código detectado:", codigo);
+        buscarEnOpenFoodFacts(codigo); // Buscar el código detectado
       });
     }
 
+    // Agrega un event listener al botón de búsqueda manual
+    document.getElementById('manual-search-button').addEventListener('click', () => {
+      const codigoManual = document.getElementById('manual-code-input').value.trim(); // Obtiene el valor del input
+      if (codigoManual) {
+        // Detener Quagga si está activo antes de buscar manualmente para evitar conflictos
+        if (typeof Quagga !== 'undefined' && Quagga.initialized) {
+            Quagga.stop();
+            console.log("Escáner detenido para búsqueda manual.");
+        }
+        document.getElementById('info').innerText = `Buscando código manual: ${codigoManual}...`;
+        buscarEnOpenFoodFacts(codigoManual); // Realiza la búsqueda con el código manual
+      } else {
+        document.getElementById('info').innerText = "Por favor, ingresa un código de barras para buscar.";
+      }
+    });
+
+    // Inicia el escáner cuando la página se ha cargado completamente
     window.addEventListener('load', iniciarScanner);
   </script>
 
