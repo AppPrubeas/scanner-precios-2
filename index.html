@@ -43,9 +43,9 @@
       min-height: 100%; /* Asegura que el video ocupe al menos el 100% del alto */
       width: auto; /* Permite que el ancho se ajuste automáticamente */
       height: auto; /* Permite que el alto se ajuste automáticamente */
-      /* CLAVE PARA CENTRAR Y CUBRIR: escala el video para cubrir el contenedor */
       object-fit: cover; 
-      object-position: center; /* Asegura que el centro del video esté centrado en el contenedor */
+      /* Mueve la imagen de la cámara un 25% a la derecha desde el centro */
+      object-position: 75% center; /* 50% es el centro, 75% mueve 25% a la derecha */
       display: block; /* Elimina espacios extra */
     }
 
@@ -165,8 +165,37 @@
 
   <script>
     /**
+     * Extrae la marca o las primeras palabras significativas de un nombre de producto.
+     * Esto es una heurística y puede no ser perfecta para todos los nombres.
+     * @param {string} productName - El nombre completo del producto.
+     * @returns {string} La posible marca o las primeras palabras para buscar.
+     */
+    function extractBrandOrKeywords(productName) {
+      if (!productName) return "";
+      
+      // Limpia y normaliza el nombre
+      let cleanName = productName.toLowerCase()
+                                .replace(/[^a-z0-9\s]/g, '') // Elimina caracteres especiales
+                                .trim();
+
+      // Divide por espacios y toma las primeras N palabras
+      const words = cleanName.split(/\s+/);
+
+      // Reglas heurísticas para intentar obtener la marca o palabras clave relevantes
+      // Puedes ajustar esto. Por ejemplo, tomar solo la primera palabra o las dos primeras.
+      if (words.length > 0) {
+        // Ejemplo: toma la primera palabra como marca (muy básico pero efectivo para muchos casos)
+        // return words[0]; 
+
+        // Ejemplo: toma las primeras 2 palabras, si hay, o solo la primera
+        return words.slice(0, 2).join(' '); 
+      }
+      return cleanName; // Si es una sola palabra, regresa esa palabra
+    }
+
+    /**
      * Intenta obtener el nombre del producto de Open Food Facts.
-     * Si lo encuentra, usa el nombre para buscar en Lider.cl.
+     * Si lo encuentra, usa la marca/primeras palabras para buscar en Lider.cl.
      * Si no, busca el código directamente en Lider.cl.
      * @param {string} codigo - El código de barras a buscar.
      */
@@ -175,7 +204,8 @@
       infoDisplay.innerHTML = `Código detectado: <strong>${codigo}</strong><br>Buscando información del producto...`;
 
       const openFoodFactsUrl = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
-      let productName = null;
+      let searchTermForLider = codigo; // Por defecto, usaremos el código si no encontramos nada mejor
+      let productFullName = null;
 
       try {
         const response = await fetch(openFoodFactsUrl);
@@ -183,11 +213,16 @@
 
         // Verifica si la API devolvió datos válidos y un nombre de producto
         if (data.status === 1 && data.product && data.product.product_name) {
-          productName = data.product.product_name;
-          infoDisplay.innerHTML = `Producto encontrado: <strong>${productName}</strong><br>Redirigiendo a Lider.cl...`;
-          console.log("Nombre de producto de Open Food Facts:", productName);
+          productFullName = data.product.product_name;
+          // Usa la función para extraer la marca/palabras clave
+          searchTermForLider = extractBrandOrKeywords(productFullName);
+
+          infoDisplay.innerHTML = `Producto: <strong>${productFullName}</strong><br>Buscando '${searchTermForLider}' en Lider.cl...`;
+          console.log("Nombre completo de Open Food Facts:", productFullName);
+          console.log("Término de búsqueda para Lider.cl (marca/palabras clave):", searchTermForLider);
+
         } else {
-          // Si no se encuentra el producto o el nombre en Open Food Facts
+          // Si no se encuentra el producto o el nombre en Open Food Facts, se usa el código por defecto
           infoDisplay.innerHTML = `Producto no encontrado en Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
           console.log("Producto no encontrado en Open Food Facts para el código:", codigo);
         }
@@ -197,9 +232,7 @@
         infoDisplay.innerHTML = `Error al consultar Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
       }
 
-      // **Lógica clave: Si se obtuvo un nombre, úsalo; de lo contrario, usa el código.**
-      const searchTerm = productName ? productName : codigo;
-      const urlLider = `https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(searchTerm)}`;
+      const urlLider = `https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(searchTermForLider)}`;
       
       // Abre la URL en una nueva pestaña/ventana
       window.open(urlLider, '_blank');
@@ -214,13 +247,8 @@
           type: "LiveStream", // Usa el video en tiempo real de la cámara
           target: document.querySelector('#scanner-container'), // Dónde renderizar el video
           constraints: {
-            // Preferimos la cámara trasera principal.
-            // 'environment' generalmente selecciona la trasera,
-            // pero podemos ser más específicos.
-            facingMode: "environment", 
-            // Podemos añadir un 'deviceId' si conocemos el ID exacto de la cámara preferida.
+            facingMode: "environment", // Preferir la cámara trasera principal.
             // Opcional: Especificar la resolución deseada para un mejor enfoque y centrado.
-            // Esto puede ayudar a que la imagen se vea mejor en el centro.
             width: { min: 640, ideal: 1280, max: 1920 },
             height: { min: 480, ideal: 720, max: 1080 }
           }
