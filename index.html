@@ -154,7 +154,6 @@
     const searchUrls = {
         'lider': 'https://www.lider.cl/supermercado/search?query=',
         'sodimac': 'https://www.sodimac.cl/sodimac-cl/search/?q=',
-        // La URL de Go-UPC ya no se usa para redirección directa, sino para la API de OFF
         'openFoodFactsApi': 'https://world.openfoodfacts.org/api/v0/product/'
     };
 
@@ -196,7 +195,7 @@
         infoDisplay.innerHTML = `Error al consultar Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
       }
 
-      lastSearchTerm = searchTermForLider; // Guarda el término final usado para Lider (nombre o código)
+      lastSearchTerm = searchTermForLider; // ¡IMPORTANTE! Actualiza lastSearchTerm con el nombre (o código) final
       redirectToStore(searchTermForLider, 'lider'); // Redirige automáticamente a Lider.cl
     }
 
@@ -337,11 +336,10 @@
 
     document.getElementById('lider-search-button').addEventListener('click', () => {
         if (scannerActive) { stopScanner(); }
-        // Si hay un último término de búsqueda (nombre o código), úsalo
-        if (lastSearchTerm) {
-            redirectToStore(lastSearchTerm, 'lider');
-        } else if (lastScannedCode) { // Fallback al código escaneado si por alguna razón no hay lastSearchTerm
-            redirectToStore(lastScannedCode, 'lider');
+        // Usa el último término de búsqueda que se usó para Lider (nombre o código)
+        const termToUse = lastSearchTerm || lastScannedCode; // lastSearchTerm tiene prioridad
+        if (termToUse) {
+            redirectToStore(termToUse, 'lider');
         } else {
             document.getElementById('info').innerText = "No hay un código escaneado o ingresado para buscar en Lider.cl.";
         }
@@ -349,8 +347,8 @@
 
     document.getElementById('sodimac-search-button').addEventListener('click', () => {
         if (scannerActive) { stopScanner(); }
-        // Si hay un último término de búsqueda (nombre o código), úsalo
-        const termToUse = lastSearchTerm || lastScannedCode;
+        // Usa el último término de búsqueda que se usó para Lider (nombre o código)
+        const termToUse = lastSearchTerm || lastScannedCode; // lastSearchTerm tiene prioridad
         if (termToUse) {
             redirectToStore(termToUse, 'sodimac');
         } else {
