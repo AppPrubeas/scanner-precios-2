@@ -163,7 +163,7 @@
 
   <div id="scanner-container">
     <div id="barcode-frame"></div>
-    <div id="scan-guidance">Centa el código de barras en el recuadro y presiona VOLUMEN ARRIBA.</div>
+    <div id="scan-guidance"></div> 
   </div>
 
   <div id="content-overlay">
@@ -192,9 +192,9 @@
   </div>
 
   <script>
-    let scannerActive = false; // Indica si la cámara está activa y lista para escanear con botón de volumen
-    let cameraStarted = false; // Nueva bandera para saber si el stream de la cámara ya está corriendo
-    let volumeButtonPressed = false; // Para evitar múltiples activaciones
+    let scannerActive = false;
+    let cameraStarted = false;
+    let volumeButtonPressed = false;
 
     let lastScannedCode = null;
     let lastSearchTerm = null;
@@ -254,13 +254,13 @@
       redirectToStore(searchTermForLider, 'lider');
     }
 
-    // Esta función solo se encarga de iniciar la cámara y el live stream
     async function initCameraLiveStream() {
       // Mostrar la interfaz de la cámara
       document.getElementById('content-overlay').style.display = 'none';
       document.getElementById('scanner-container').style.display = 'flex';
       document.getElementById('scan-button').disabled = true;
 
+      // Mensaje inicial mientras la cámara se activa
       document.getElementById('info').innerText = 'Activando cámara...';
       document.getElementById('scan-guidance').innerText = 'Activando cámara...';
 
@@ -285,183 +285,3 @@
           console.log("No se encontró 'Main Camera', usando la primera disponible:", videoDevices[0].label);
         } else {
           throw new Error("No se encontraron cámaras de video.");
-        }
-
-        const constraints = {
-          audio: false,
-          video: { 
-              deviceId: { exact: selectedDeviceId },
-              width: { exact: 720 },
-              height: { exact: 480 }
-          }
-        };
-
-        await new Promise((resolve, reject) => {
-          Quagga.init({
-            inputStream: {
-              type: "LiveStream",
-              target: document.querySelector('#scanner-container'),
-              constraints: constraints
-            },
-            decoder: {
-              readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader", "i2of5_reader"]
-            },
-            locate: true, // Crucial para la detección de códigos rotados y en cualquier parte
-            patchSize: 'medium', 
-            halfSample: false, 
-            numOfWorkers: 0, 
-            frequency: 15 
-          }, function(err) {
-            if (err) {
-              reject(err);
-            } else {
-              console.log("Quagga inicializado correctamente. Cámara en vivo.");
-              Quagga.start(); // Inicia el stream de la cámara
-              scannerActive = true; // El escáner está activo y esperando input
-              cameraStarted = true; // La cámara está lista
-              document.getElementById('scan-guidance').innerText = 'Centa el código de barras en el recuadro y presiona VOLUMEN ARRIBA.';
-              resolve();
-            }
-          });
-        });
-
-      } catch (error) {
-        console.error("Error al iniciar el live stream de la cámara:", error);
-        document.getElementById('info').innerText = `Error: ${error.message}. Asegúrate de dar permisos o intenta el ingreso manual.`;
-        stopScanner(); // Asegúrate de cerrar todo si falla
-      } finally {
-        document.getElementById('scan-button').disabled = false;
-        document.getElementById('scan-button').innerText = 'Escanear';
-      }
-    }
-
-    // Función para capturar y decodificar una sola vez cuando se presiona el botón de volumen
-    function captureAndDecode() {
-        if (!scannerActive || !cameraStarted || volumeButtonPressed) {
-            console.log("Escáner no activo, cámara no iniciada o botón de volumen ya presionado. Ignorando.");
-            return;
-        }
-        volumeButtonPressed = true; // Bloquea múltiples activaciones
-
-        document.getElementById('scan-guidance').innerText = 'Analizando imagen...';
-        document.getElementById('scan-button').disabled = true; // Deshabilita el botón de nuevo
-        
-        Quagga.decodeSingle({
-            inputStream: {
-                name: "Live",
-                type: "LiveStream",
-                target: document.querySelector('#scanner-container')
-            },
-            decoder: {
-                readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader", "i2of5_reader"]
-            }
-        }, function(result) {
-            volumeButtonPressed = false; // Restablece el bloqueo
-
-            if (result && result.codeResult && result.codeResult.code) {
-                const codigo = result.codeResult.code;
-                console.log("Código detectado:", codigo);
-                stopScanner(); // Detiene el escáner completamente y vuelve al menú
-                buscarProductoYRedirigir(codigo);
-            } else {
-                console.log("No se detectó ningún código en la foto.");
-                document.getElementById('scan-guidance').innerText = 'No se detectó código. Presiona VOLUMEN ARRIBA de nuevo.';
-                document.getElementById('info').innerText = 'No se detectó ningún código. Intenta de nuevo.';
-                // No detenemos la cámara, permitimos al usuario reintentar con otro volumen-up
-                document.getElementById('scan-button').disabled = false; // Re-habilita el botón "Escanear" en la vista de la cámara
-            }
-        });
-    }
-
-    // Función para detener la cámara y volver a la interfaz principal
-    function stopScanner() {
-      if (scannerActive) {
-        Quagga.stop();
-        scannerActive = false;
-        cameraStarted = false;
-        console.log("Cámara detenida.");
-      }
-      document.getElementById('scanner-container').style.display = 'none';
-      document.getElementById('content-overlay').style.display = 'flex';
-      document.getElementById('info').innerText = 'Listo para escanear.';
-      document.getElementById('scan-button').innerText = 'Escanear'; // Restablece el texto del botón
-      document.getElementById('scan-button').disabled = false; // Asegura que el botón esté habilitado
-    }
-
-    // --- MANEJO DEL BOTÓN DE VOLUMEN (global listener) ---
-    document.addEventListener('keydown', (event) => {
-        if (cameraStarted) { // Solo si el live stream de la cámara está activo
-            // Intentar prevenir el comportamiento por defecto de la tecla
-            if (event.key === "ArrowUp" || event.keyCode === 38 || 
-                event.key === "VolumeUp" || event.keyCode === 104) { 
-                
-                event.preventDefault(); 
-                event.stopImmediatePropagation(); 
-                
-                if (!volumeButtonPressed) { // Evita múltiples activaciones rápidas
-                    captureAndDecode();
-                }
-            } else if (event.key === "ArrowDown" || event.keyCode === 40 || 
-                       event.key === "VolumeDown" || event.keyCode === 98) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
-        }
-    }, true); 
-
-    document.addEventListener('keyup', (event) => {
-        if (cameraStarted) {
-            if (event.key === "ArrowUp" || event.keyCode === 38 || 
-                event.key === "VolumeUp" || event.keyCode === 104) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                volumeButtonPressed = false; // Resetear la bandera al soltar el botón
-            } else if (event.key === "ArrowDown" || event.keyCode === 40 || 
-                       event.key === "VolumeDown" || event.keyCode === 98) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
-        }
-    }, true);
-    // --- FIN MANEJO DEL BOTÓN DE VOLUMEN ---
-
-
-    // Event Listener para el botón "Escanear" en la interfaz principal
-    document.getElementById('scan-button').addEventListener('click', initCameraLiveStream); // Llama a la función que inicia solo el live stream
-
-    // Event listeners para los botones de búsqueda manual
-    document.getElementById('manual-search-button').addEventListener('click', () => {
-      const codigoManual = document.getElementById('manual-code-input').value.trim();
-      if (codigoManual) {
-        if (scannerActive) { stopScanner(); } // Asegurarse de detener la cámara si está activa
-        document.getElementById('info').innerText = `Buscando código manual: ${codigoManual}...`;
-        buscarProductoYRedirigir(codigoManual);
-      } else {
-        document.getElementById('info').innerText = "Por favor, ingresa un código de barras para buscar.";
-      }
-    });
-
-    document.getElementById('lider-search-button').addEventListener('click', () => {
-        if (scannerActive) { stopScanner(); }
-        if (lastSearchTerm) {
-            redirectToStore(lastSearchTerm, 'lider');
-        } else if (lastScannedCode) {
-            redirectToStore(lastScannedCode, 'lider');
-        } else {
-            document.getElementById('info').innerText = "No hay un código escaneado o término para buscar.";
-        }
-    });
-
-    document.getElementById('sodimac-search-button').addEventListener('click', () => {
-        if (scannerActive) { stopScanner(); }
-        const termToUse = lastSearchTerm || lastScannedCode;
-        if (termToUse) {
-            redirectToStore(termToUse, 'sodimac');
-        } else {
-            document.getElementById('info').innerText = "No hay un código escaneado o término para buscar.";
-        }
-    });
-  </script>
-
-</body>
-</html>
