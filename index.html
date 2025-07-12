@@ -2,14 +2,14 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Escáner de Precios - Lider</title>
+  <title>Escáner de Precios - Walmart</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://unpkg.com/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
   <style>
     /* Estilos generales del cuerpo de la página */
     body {
       font-family: Arial, sans-serif;
-      background-color: #0062E3; /* Fondo azul Lider */
+      background-color: #0062E3; /* Fondo azul Lider (podrías querer cambiarlo a un azul de Walmart si lo deseas) */
       color: white;
       text-align: center;
       padding-top: 20px;
@@ -36,25 +36,21 @@
       align-items: center;
       border: 1px solid #0062E3;
       
-      /* --- CAMBIO AQUÍ: OCULTAR INICIALMENTE --- */
       visibility: hidden; /* Oculta el elemento, pero mantiene su espacio */
       opacity: 0; /* Lo hace transparente */
       transition: visibility 0s, opacity 0.5s ease-in-out; /* Animación de aparición */
-      /* ------------------------------------------ */
     }
 
     #scanner-container.ready {
-      /* --- CAMBIO AQUÍ: MOSTRAR CUANDO ESTÉ LISTO --- */
       visibility: visible;
       opacity: 1;
-      /* ----------------------------------------------- */
     }
 
     #scanner-container video {
       display: block;
       width: 100%;
       height: 100%;
-      object-fit: 100%;
+      object-fit: cover;
     }
 
     /* Contenedor principal de los elementos de la interfaz de usuario */
@@ -69,7 +65,7 @@
       border-radius: 8px;
     }
 
-    /* Estilos para el logo de Lider */
+    /* Estilos para el logo */
     img.logo {
       max-width: 150px;
       margin-bottom: 15px;
@@ -88,14 +84,14 @@
 
     /* Estilos para los enlaces */
     a {
-      color: #FFD700;
+      color: #FFD700; /* Amarillo Lider */
       text-decoration: underline;
     }
 
     .button-primary {
       padding: 12px 25px;
-      background-color: #FFD700;
-      color: #0062E3;
+      background-color: #FFD700; /* Amarillo Lider */
+      color: #0062E3; /* Texto azul Lider */
       border: none;
       border-radius: 6px;
       cursor: pointer;
@@ -168,7 +164,7 @@
   <div id="scanner-container"></div>
 
   <div id="content-overlay">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Lider_logo_2020.svg/512px-Lider_logo_2020.svg.png" alt="Lider" class="logo">
+    <img src="https://images.seeklogo.com/logo-png/29/1/walmart-spark-logo-png_seeklogo-292795.png" alt="Walmart" class="logo">
 
     <h1>Escáner de Producto</h1>
     <p>Ten el código de barras dentro del rectángulo y presiona "Escanear".</p>
@@ -234,7 +230,7 @@
         const data = await response.json();
 
         if (data.status === 1 && data.product && data.product.product_name) {
-          productFullName = data.product.product_name;
+          productFullName = data.product.product.product_name;
           searchTermForLider = extractBrandOrKeywords(productFullName);
           infoDisplay.innerHTML = `Producto: <strong>${productFullName}</strong><br>Redirigiendo a Lider.cl con: '${searchTermForLider}'...`;
           console.log("Nombre completo de Open Food Facts:", productFullName);
@@ -258,11 +254,10 @@
           let videoDevices = devices.filter(device => device.kind === 'videoinput');
           let selectedDeviceId = null;
 
-          // Intenta encontrar la "main camera" buscando palabras clave en la etiqueta
           const mainCamera = videoDevices.find(device => 
             device.label.toLowerCase().includes('main') || 
             device.label.toLowerCase().includes('principal') || 
-            device.label.toLowerCase().includes('environment') || // 'environment' suele ser la trasera/principal
+            device.label.toLowerCase().includes('environment') || 
             device.label.toLowerCase().includes('back') ||
             device.label.toLowerCase().includes('rear')
           );
@@ -271,23 +266,23 @@
             selectedDeviceId = mainCamera.deviceId;
             console.log("Intentando usar la 'Main Camera' (o equivalente):", mainCamera.label);
           } else if (videoDevices.length > 0) {
-            // Si no se encuentra una 'main', usa la primera disponible (fallback)
             selectedDeviceId = videoDevices[0].deviceId;
             console.log("No se encontró 'Main Camera', usando la primera disponible:", videoDevices[0].label);
           } else {
             console.warn("No se encontraron cámaras de video.");
             document.getElementById('info').innerText = "No se encontraron cámaras. Asegúrate de tener una y dar permisos.";
             document.getElementById('scanner-container').style.backgroundColor = '#555';
-            return; // Salir si no hay cámaras
+            return;
           }
 
           const constraints = {
             audio: false,
             video: { 
                 deviceId: { exact: selectedDeviceId },
-                width: { ideal: window.innerWidth > 720 ? 1280 : 720 },
-                height: { ideal: window.innerWidth > 720 ? 720 : 480 },
-                aspectRatio: { ideal: window.innerWidth > 720 ? 1.777 : 1.333 }
+                // CAMBIO: Resolución fija a 720x480 con 'exact'
+                width: { exact: 720 },
+                height: { exact: 480 }
+                // Eliminamos aspectRatio, ya que width y height lo definen
             }
           };
 
@@ -313,16 +308,11 @@
             scannerStarted = true;
             document.getElementById('info').innerText = 'Cámara lista. Centra el código en el rectángulo y presiona "Escanear".';
             
-            // --- CAMBIO AQUÍ: MOSTRAR EL CONTENEDOR DE LA CÁMARA CUANDO ESTÉ LISTO ---
             document.getElementById('scanner-container').classList.add('ready');
-            // ---------------------------------------------------------------------
           });
 
           Quagga.onDetected(result => {
-             // Este onDetected solo se ejecutará si Quagga está en modo de escaneo continuo.
-             // Para la funcionalidad de "foto al presionar botón", la detección se hace
-             // con Quagga.decodeSingle en el event listener del botón.
-             // Puedes mantenerlo comentado o eliminarlo si solo deseas el modo de "foto por botón".
+             // onDetected logic (if needed for continuous scanning)
           });
         })
         .catch(error => {
@@ -335,7 +325,6 @@
     document.getElementById('scan-button').addEventListener('click', () => {
         if (!scannerStarted) {
             document.getElementById('info').innerText = "La cámara no está activa. Recarga la página o revisa los permisos.";
-            // Si la cámara no está activa, intenta iniciarla de nuevo.
             initQuaggaCamera(); 
             return;
         }
