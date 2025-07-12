@@ -21,7 +21,6 @@
       box-sizing: border-box;
     }
 
-
     /* Contenedor principal de los elementos de la interfaz de usuario */
     #content-overlay {
       width: 100%;
@@ -115,7 +114,8 @@
 <body>
 
   <div id="scanner-container">
-    <div id="barcode-frame"></div> </div>
+    <div id="barcode-frame"></div>
+  </div>
 
   <div id="content-overlay">
     <img src="https://images.seeklogo.com/logo-png/29/1/walmart-spark-logo-png_seeklogo-292795.png" alt="Walmart" class="logo">
@@ -147,23 +147,15 @@
     let scannerActive = false; // Indica si la cámara está activa
     let timeoutId = null; // Para el temporizador de tiempo de espera del escáner
     const SCAN_DURATION_MS = 7000; // 7 segundos para escanear
-    let lastScannedCode = null;
-    let lastSearchTerm = null;
+    let lastScannedCode = null; // Almacena el último código escaneado o ingresado
+    let lastSearchTerm = null; // Este ahora será el mismo que lastScannedCode para simplificar
 
     // URLs de búsqueda para las tiendas
     const searchUrls = {
         'lider': 'https://www.lider.cl/supermercado/search?query=',
         'sodimac': 'https://www.sodimac.cl/sodimac-cl/search/?q=',
-        'goUpc': 'https://go-upc.com/es/barcode-lookup/' // Nueva URL para go-upc.com
+        'goUpc': 'https://go-upc.com/es/barcode-lookup/' // URL para go-upc.com
     };
-
-    // Función para extraer marca o palabras clave del nombre del producto
-    function extractBrandOrKeywords(productName) {
-      if (!productName) return "";
-      let cleanName = productName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
-      const words = cleanName.split(/\s+/);
-      return words.slice(0, 2).join(' '); // Usamos las primeras 2 palabras
-    }
 
     // Función para redirigir a una tienda
     function redirectToStore(term, storeKey) {
@@ -173,53 +165,37 @@
             return;
         }
         const url = searchUrls[storeKey] + encodeURIComponent(term);
-        window.open(url, '_blank');
+        window.open(url, '_blank'); // Abre en una nueva pestaña
         document.getElementById('info').innerText = `Redirigiendo a ${storeKey.toUpperCase()} con: '${term}'...`;
     }
 
-    // Función principal para buscar el producto y redirigir
-    async function buscarProductoYRedirigir(codigo) {
-      lastScannedCode = codigo;
+    // Función principal para buscar el producto
+    async function buscarProducto(codigo) {
+      lastScannedCode = codigo; // Guarda el código para futuras búsquedas
+      lastSearchTerm = codigo; // Establece el término de búsqueda para Lider/Sodimac
+
       const infoDisplay = document.getElementById('info');
-      infoDisplay.innerHTML = `Código detectado: <strong>${codigo}</strong><br>Buscando información del producto...`;
+      infoDisplay.innerHTML = `Código detectado: <strong>${codigo}</strong><br>Buscando en go-upc.com...`;
 
-      // Ahora usamos go-upc.com para buscar el producto
-      const goUpcUrl = searchUrls['goUpc'] + codigo;
-      let searchTermForLider = codigo; // Por defecto, usa el código de barras
+      // Redirige directamente a go-upc.com
+      redirectToStore(codigo, 'goUpc');
 
-      try {
-        // Redirigimos directamente a go-upc.com con el código
-        redirectToStore(codigo, 'goUpc');
-        infoDisplay.innerHTML = `Producto no encontrado en la base de datos local.<br>Redirigiendo a go-upc.com con el código...`;
-        console.log("Redirigiendo a go-upc.com para el código:", codigo);
-
-      } catch (err) {
-        console.error("Error al consultar go-upc.com (aunque estamos redirigiendo directamente):", err);
-        infoDisplay.innerHTML = `Error al intentar redirigir a go-upc.com.<br>Redirigiendo a Lider.cl con el código...`;
-        // Si hay un error al intentar redirigir, aún podemos intentar con Lider.cl como fallback
-        lastSearchTerm = searchTermForLider;
-        redirectToStore(searchTermForLider, 'lider');
-      }
-
-      // Si no redirigimos directamente a go-upc.com por algún motivo, caemos a Lider
-      // lastSearchTerm = searchTermForLider; // Esto ya no es necesario aquí si siempre redirigimos a go-upc.com primero
-      // redirectToStore(searchTermForLider, 'lider'); // Esto ahora sería un fallback si el primary search fails
+      // Actualiza el mensaje en la página original
+      infoDisplay.innerHTML = `Redirigido a go-upc.com con: <strong>${codigo}</strong>.<br>Puedes usar los botones de abajo para buscar en otras tiendas.`;
     }
 
     // Función para iniciar la cámara (se llama al presionar el botón)
     async function startScanner() {
-      // Oculta la interfaz principal y muestra el contenedor del escáner
       document.getElementById('content-overlay').style.display = 'none';
-      document.getElementById('scanner-container').style.display = 'flex'; // Muestra el contenedor de la cámara
+      document.getElementById('scanner-container').style.display = 'flex';
       document.getElementById('info').innerText = 'Activando cámara...';
-      document.getElementById('scan-button').disabled = true; // Deshabilita el botón
+      document.getElementById('scan-button').disabled = true;
 
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(device => device.kind === 'videoinput');
         let selectedDeviceId = null;
 
-        // Lógica para seleccionar la "Main Camera" (cámara trasera)
         const mainCamera = videoDevices.find(device => 
           device.label.toLowerCase().includes('main') || 
           device.label.toLowerCase().includes('principal') || 
@@ -242,12 +218,11 @@
           audio: false,
           video: { 
               deviceId: { exact: selectedDeviceId },
-              width: { exact: 720 }, // Resolución fija para el stream
-              height: { exact: 480 } // Resolución fija para el stream
+              width: { exact: 720 },
+              height: { exact: 480 }
           }
         };
 
-        // Inicializa Quagga.js
         await new Promise((resolve, reject) => {
           Quagga.init({
             inputStream: {
@@ -258,17 +233,17 @@
             decoder: {
               readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader", "i2of5_reader"]
             },
-            locate: true, // Dibuja el recuadro de localización del código
-            patchSize: 'medium', // Tamaño del parche para el procesamiento de imagen
-            halfSample: false, // No reduce la resolución de la imagen (más preciso)
-            numOfWorkers: 0, // Ejecuta en el hilo principal (más simple, pero puede bloquear UI)
-            frequency: 20 // Frecuencia de frames a procesar
+            locate: true,
+            patchSize: 'medium',
+            halfSample: false,
+            numOfWorkers: 0,
+            frequency: 20
           }, function(err) {
             if (err) {
               reject(err);
             } else {
               console.log("Quagga inicializado correctamente. Cámara en vivo.");
-              Quagga.start(); // Inicia el stream de la cámara y el procesamiento
+              Quagga.start();
               scannerActive = true;
               document.getElementById('info').innerText = 'Cámara activa. Enfoca el código.';
               resolve();
@@ -276,32 +251,26 @@
           });
         });
 
-        // Este es el detector continuo de códigos (Quagga.onDetected) - RESTAURADO
         Quagga.onDetected(result => {
           if (scannerActive && result && result.codeResult && result.codeResult.code) {
             const codigo = result.codeResult.code;
             console.log("Código detectado:", codigo);
-            clearTimeout(timeoutId); // Limpia el temporizador porque se encontró el código
+            clearTimeout(timeoutId);
 
-            // *** Feedback visual y pequeña pausa - RESTAURADO ***
             const barcodeFrame = document.getElementById('barcode-frame');
-            barcodeFrame.style.borderColor = '#00FF00'; // Cambia el borde a verde
+            barcodeFrame.style.borderColor = '#00FF00';
             
-            // Introduce un pequeño retraso para la confirmación visual
             setTimeout(() => {
-              stopScanner(); // Detiene la cámara y vuelve al menú principal
-              // Ahora que la interfaz principal es visible, actualizamos el mensaje
+              stopScanner();
               document.getElementById('info').innerHTML = `¡Código detectado! Procesando: <strong>${codigo}</strong>...`; 
-              buscarProductoYRedirigir(codigo); // Procesa el código
-            }, 500); // Pausa de 500ms (medio segundo)
-            // *** Fin Restaurado ***
+              buscarProducto(codigo); // Llama a la nueva función buscarProducto
+            }, 500);
 
           } else {
             console.log("Detección fallida o resultado nulo en onDetected. Continuar escaneando.");
           }
         });
 
-        // Inicia el temporizador para detener el escaneo si no se detecta nada en SCAN_DURATION_MS - RESTAURADO
         timeoutId = setTimeout(() => {
           if (scannerActive) {
             console.log(`Tiempo de escaneo agotado (${SCAN_DURATION_MS / 1000}s), no se detectó ningún código.`);
@@ -313,9 +282,9 @@
       } catch (error) {
         console.error("Error al iniciar el escáner:", error);
         document.getElementById('info').innerText = `Error: ${error.message}. Asegúrate de dar permisos o intenta el ingreso manual.`;
-        stopScanner(); // Asegúrate de cerrar todo si falla
+        stopScanner();
       } finally {
-        document.getElementById('scan-button').disabled = false; // Re-habilita el botón
+        document.getElementById('scan-button').disabled = false;
         document.getElementById('scan-button').innerText = 'Escanear';
       }
     }
@@ -323,20 +292,17 @@
     // Función para detener la cámara y volver a la interfaz principal
     function stopScanner() {
       if (scannerActive) {
-        Quagga.offDetected(); // Remueve el detector continuo
-        Quagga.stop(); // Detiene el stream de la cámara
+        Quagga.offDetected();
+        Quagga.stop();
         scannerActive = false;
-        clearTimeout(timeoutId); // Asegura que el temporizador se limpie
+        clearTimeout(timeoutId);
         console.log("Cámara detenida.");
       }
-      // Restablecer el color del borde del recuadro - RESTAURADO
       const barcodeFrame = document.getElementById('barcode-frame');
-      barcodeFrame.style.borderColor = '#FFD700'; // Restablecer a amarillo
+      barcodeFrame.style.borderColor = '#FFD700';
 
-      document.getElementById('scanner-container').style.display = 'none'; // Oculta el contenedor de la cámara
-      document.getElementById('content-overlay').style.display = 'flex'; // Muestra la interfaz principal
-      // El mensaje se actualiza después de stopScanner, o se restablece si no hubo detección
-      // document.getElementById('info').innerText = 'Listo para escanear.'; 
+      document.getElementById('scanner-container').style.display = 'none';
+      document.getElementById('content-overlay').style.display = 'flex';
     }
 
     // Event Listeners
@@ -345,9 +311,9 @@
     document.getElementById('manual-search-button').addEventListener('click', () => {
       const codigoManual = document.getElementById('manual-code-input').value.trim();
       if (codigoManual) {
-        if (scannerActive) { stopScanner(); } // Si el escáner está activo, detenerlo
+        if (scannerActive) { stopScanner(); }
         document.getElementById('info').innerText = `Buscando código manual: ${codigoManual}...`;
-        buscarProductoYRedirigir(codigoManual);
+        buscarProducto(codigoManual); // Llama a la nueva función buscarProducto
       } else {
         document.getElementById('info').innerText = "Por favor, ingresa un código de barras para buscar.";
       }
@@ -355,22 +321,21 @@
 
     document.getElementById('lider-search-button').addEventListener('click', () => {
         if (scannerActive) { stopScanner(); }
-        // Si hay un término de búsqueda previo o un código escaneado, úsalo para Lider
-        const termToUse = lastSearchTerm || lastScannedCode;
-        if (termToUse) {
-            redirectToStore(termToUse, 'lider');
+        // Usa el último código escaneado/ingresado para buscar en Lider
+        if (lastScannedCode) {
+            redirectToStore(lastScannedCode, 'lider');
         } else {
-            document.getElementById('info').innerText = "No hay un código escaneado o término para buscar.";
+            document.getElementById('info').innerText = "No hay un código escaneado o ingresado para buscar en Lider.cl.";
         }
     });
 
     document.getElementById('sodimac-search-button').addEventListener('click', () => {
         if (scannerActive) { stopScanner(); }
-        const termToUse = lastSearchTerm || lastScannedCode;
-        if (termToUse) {
-            redirectToStore(termToUse, 'sodimac');
+        // Usa el último código escaneado/ingresado para buscar en Sodimac
+        if (lastScannedCode) {
+            redirectToStore(lastScannedCode, 'sodimac');
         } else {
-            document.getElementById('info').innerText = "No hay un código escaneado o término para buscar.";
+            document.getElementById('info').innerText = "No hay un código escaneado o ingresado para buscar en Sodimac.cl.";
         }
     });
   </script>
