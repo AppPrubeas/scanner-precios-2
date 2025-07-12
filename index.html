@@ -27,17 +27,15 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background-color: rgba(0, 0, 0, 0.8); /* Ligeramente más oscuro para mejor contraste */
+      background-color: rgba(0, 0, 0, 0.8);
       z-index: 1000;
-      display: flex; /* Se usa flex para el contenido de los mensajes */
+      display: flex;
       justify-content: center;
       align-items: center;
       overflow: hidden;
-      /* Eliminar el borde si el mensaje de "centra el código" ya lo indica */
-      /* border: 2px solid rgba(255, 255, 255, 0.5); */ 
       box-sizing: border-box;
-      flex-direction: column; /* Para apilar el video y el texto de guía */
-      gap: 10px; /* Espacio entre video y texto */
+      flex-direction: column;
+      gap: 10px;
     }
 
     #scanner-container video {
@@ -45,38 +43,39 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      position: absolute; /* Para que el video quede detrás del texto guía */
+      position: absolute;
       top: 0;
       left: 0;
     }
 
-    /* Nuevo estilo para el mensaje de guía dentro del scanner-container */
+    /* Mensaje de guía para el usuario */
     #scan-guidance {
-      position: relative; /* Para que esté por encima del video */
+      position: relative;
       z-index: 1001;
-      background-color: rgba(0, 0, 0, 0.5); /* Fondo semitransparente para legibilidad */
-      padding: 10px 20px;
+      background-color: rgba(0, 0, 0, 0.6); /* Más opaco para mejor lectura */
+      padding: 12px 25px; /* Más padding para que destaque */
       border-radius: 8px;
-      font-size: 1.2em;
+      font-size: 1.4em; /* Más grande */
       color: white;
-      text-shadow: 1px 1px 2px black;
-      max-width: 80%; /* Para que el texto no sea demasiado ancho */
+      text-shadow: 1px 1px 3px black;
+      max-width: 85%;
       text-align: center;
+      margin-top: -15vh; /* Ajusta la posición vertical si es necesario */
     }
 
-    /* Líneas de guía más visuales */
+    /* Líneas de guía más visuales y oscurecimiento */
     #barcode-frame {
         position: absolute;
         top: 50%;
         left: 50%;
-        width: 70%; /* Ancho del marco */
-        max-width: 400px;
-        height: 15%; /* Altura del marco, más parecido a un código de barras */
-        border: 2px solid #FFD700; /* Amarillo para el marco */
+        width: 70%;
+        max-width: 450px; /* Un poco más ancho */
+        height: 20%; /* Un poco más alto */
+        border: 3px solid #FFD700; /* Borde más grueso y amarillo */
         transform: translate(-50%, -50%);
-        z-index: 1001; /* Asegura que el marco esté sobre el video */
-        pointer-events: none; /* Permite que los clics pasen a elementos subyacentes */
-        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7); /* Oscurece el exterior del marco */
+        z-index: 1001;
+        pointer-events: none;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7); /* Oscurece el exterior */
     }
 
 
@@ -166,14 +165,14 @@
 
   <div id="scanner-container">
     <div id="barcode-frame"></div>
-    <div id="scan-guidance">Centa el código de barras en el recuadro.</div>
+    <div id="scan-guidance">Centa el código de barras en el recuadro y presiona VOLUMEN ARRIBA.</div>
   </div>
 
   <div id="content-overlay">
     <img src="https://images.seeklogo.com/logo-png/29/1/walmart-spark-logo-png_seeklogo-292795.png" alt="Walmart" class="logo">
 
     <h1>Escáner de Producto</h1>
-    <p>Presiona "Escanear" para abrir la cámara y buscar el código.</p>
+    <p>Presiona "Escanear" para abrir la cámara.</p>
 
     <div id="scan-button-container">
         <button id="scan-button" class="button-primary">Escanear</button>
@@ -196,8 +195,9 @@
 
   <script>
     let scannerActive = false;
-    let timeoutId = null;
-    const SCAN_DURATION_MS = 7000; // Aumentado a 7 segundos para dar más tiempo
+    let cameraStarted = false; // Nueva bandera para saber si el stream de la cámara ya está corriendo
+    let volumeButtonPressed = false; // Para evitar múltiples activaciones
+
     let lastScannedCode = null;
     let lastSearchTerm = null;
 
@@ -209,8 +209,8 @@
     function extractBrandOrKeywords(productName) {
       if (!productName) return "";
       let cleanName = productName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
-      const words = cleanName.slice(0, 3).join(' '); // Aumentamos a 3 palabras para más contexto
-      return words;
+      const words = cleanName.split(/\s+/);
+      return words.slice(0, 3).join(' '); 
     }
 
     function redirectToStore(term, storeKey) {
@@ -257,10 +257,14 @@
     }
 
     async function startScanner() {
+      // Mostrar la interfaz de la cámara
       document.getElementById('content-overlay').style.display = 'none';
-      document.getElementById('scanner-container').style.display = 'flex'; // Usar flex para centrar contenido
-      document.getElementById('info').innerText = 'Activando cámara...';
+      document.getElementById('scanner-container').style.display = 'flex';
       document.getElementById('scan-button').disabled = true;
+
+      document.getElementById('info').innerText = 'Activando cámara...';
+      document.getElementById('scan-guidance').innerText = 'Activando cámara...';
+
 
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -294,6 +298,7 @@
           }
         };
 
+        // Inicializar Quagga sin onDetected aquí, ya que queremos control manual
         await new Promise((resolve, reject) => {
           Quagga.init({
             inputStream: {
@@ -302,47 +307,26 @@
               constraints: constraints
             },
             decoder: {
-              readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader", "i2of5_reader"] // Añadido I2of5
+              readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader", "i2of5_reader"]
             },
             locate: true,
-            // --- AJUSTES PARA MEJORAR LA DETECCIÓN ---
-            patchSize: 'medium', // 'x-small', 'small', 'medium', 'large', 'x-large'
-            halfSample: false, // Intentar con false para códigos más nítidos
-            numOfWorkers: 0, // 0 para ejecutar en el hilo principal (puede ser más estable)
-            frequency: 20 // Mayor frecuencia de procesamiento
-            // --- FIN AJUSTES ---
+            patchSize: 'medium',
+            halfSample: false,
+            numOfWorkers: 0,
+            frequency: 15 // Una frecuencia razonable para el live stream
           }, function(err) {
             if (err) {
               reject(err);
             } else {
               console.log("Quagga inicializado correctamente. Cámara en vivo.");
-              Quagga.start();
+              Quagga.start(); // Inicia el stream de la cámara, pero no el escaneo continuo
               scannerActive = true;
-              document.getElementById('scan-guidance').innerText = 'Centa el código de barras en el recuadro.';
+              cameraStarted = true; // La cámara está lista
+              document.getElementById('scan-guidance').innerText = 'Centa el código de barras en el recuadro y presiona VOLUMEN ARRIBA.';
               resolve();
             }
           });
         });
-
-        Quagga.onDetected(result => {
-          if (scannerActive && result && result.codeResult && result.codeResult.code) {
-            const codigo = result.codeResult.code;
-            console.log("Código detectado:", codigo);
-            clearTimeout(timeoutId);
-            stopScanner();
-            buscarProductoYRedirigir(codigo);
-          } else {
-            console.log("Detección fallida o resultado nulo en onDetected.");
-          }
-        });
-
-        timeoutId = setTimeout(() => {
-          if (scannerActive) {
-            console.log(`Tiempo de escaneo agotado (${SCAN_DURATION_MS / 1000}s), no se detectó ningún código.`);
-            stopScanner();
-            document.getElementById('info').innerText = `No se detectó ningún código después de ${SCAN_DURATION_MS / 1000} segundos. Intenta de nuevo o usa el ingreso manual.`;
-          }
-        }, SCAN_DURATION_MS);
 
       } catch (error) {
         console.error("Error al iniciar el escáner:", error);
@@ -354,19 +338,105 @@
       }
     }
 
+    // Nueva función para capturar y decodificar una sola vez
+    function captureAndDecode() {
+        if (!scannerActive || !cameraStarted || volumeButtonPressed) {
+            console.log("Escáner no activo, cámara no iniciada o botón de volumen ya presionado.");
+            return;
+        }
+        volumeButtonPressed = true; // Bloquea múltiples activaciones
+
+        document.getElementById('scan-guidance').innerText = 'Analizando imagen...';
+        document.getElementById('scan-button').disabled = true; // Deshabilita el botón de nuevo
+        
+        Quagga.decodeSingle({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: document.querySelector('#scanner-container')
+            },
+            decoder: {
+                readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader", "i2of5_reader"]
+            }
+        }, function(result) {
+            volumeButtonPressed = false; // Restablece el bloqueo
+
+            if (result && result.codeResult && result.codeResult.code) {
+                const codigo = result.codeResult.code;
+                console.log("Código detectado:", codigo);
+                stopScanner(); // Detiene el escáner completamente
+                buscarProductoYRedirigir(codigo);
+            } else {
+                console.log("No se detectó ningún código en la foto.");
+                document.getElementById('scan-guidance').innerText = 'No se detectó código. Presiona VOLUMEN ARRIBA de nuevo o "Escanear" para reintentar.';
+                document.getElementById('info').innerText = 'No se detectó ningún código. Intenta de nuevo.';
+                // No detenemos la cámara, permitimos al usuario reintentar con otro volumen-up
+                document.getElementById('scan-button').disabled = false;
+            }
+        });
+    }
+
     function stopScanner() {
       if (scannerActive) {
-        Quagga.offDetected();
         Quagga.stop();
         scannerActive = false;
-        clearTimeout(timeoutId);
+        cameraStarted = false;
         console.log("Cámara detenida.");
       }
       document.getElementById('scanner-container').style.display = 'none';
       document.getElementById('content-overlay').style.display = 'flex';
       document.getElementById('info').innerText = 'Listo para escanear.';
+      document.getElementById('scan-button').innerText = 'Escanear'; // Restablece el texto del botón
+      document.getElementById('scan-button').disabled = false; // Asegura que el botón esté habilitado
     }
 
+    // --- MANEJO DEL BOTÓN DE VOLUMEN ---
+    document.addEventListener('keydown', (event) => {
+        // console.log("Key pressed:", event.key, event.keyCode, "Scanner Active:", scannerActive); // Debugging
+        if (scannerActive && cameraStarted) { // Solo si la cámara está activa
+            // Evitar el comportamiento por defecto de la tecla
+            // OJO: Prevenir el comportamiento por defecto de los botones de volumen es MUY difícil
+            // y a menudo inconsistente o imposible en navegadores móviles.
+            // Puede que el volumen del dispositivo aún se ajuste.
+            if (event.key === "ArrowUp" || event.keyCode === 38 || 
+                event.key === "VolumeUp" || event.keyCode === 104) { // Volume Up, ArrowUp, Numpad 8
+                
+                event.preventDefault(); // Intentar prevenir el comportamiento por defecto
+                event.stopImmediatePropagation(); // Evitar que otros listeners lo capten
+                
+                if (!volumeButtonPressed) { // Evita múltiples activaciones rápidas
+                    captureAndDecode();
+                }
+            } else if (event.key === "ArrowDown" || event.keyCode === 40 || 
+                       event.key === "VolumeDown" || event.keyCode === 98) { // Volume Down, ArrowDown, Numpad 2
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                // Opcional: Podrías usar volumen abajo para cerrar o reintentar
+                // stopScanner(); 
+                // document.getElementById('info').innerText = 'Escaneo cancelado.';
+                // console.log("Volumen abajo presionado, escaneo detenido.");
+            }
+        }
+    }, true); // Usar `true` para la fase de captura y asegurar que se dispare antes que otros.
+
+    document.addEventListener('keyup', (event) => {
+        if (scannerActive && cameraStarted) {
+            if (event.key === "ArrowUp" || event.keyCode === 38 || 
+                event.key === "VolumeUp" || event.keyCode === 104) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                volumeButtonPressed = false; // Resetear la bandera al soltar el botón
+            } else if (event.key === "ArrowDown" || event.keyCode === 40 || 
+                       event.key === "VolumeDown" || event.keyCode === 98) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        }
+    }, true);
+    // --- FIN MANEJO DEL BOTÓN DE VOLUMEN ---
+
+
+    // Event Listeners para botones de interfaz
     document.getElementById('scan-button').addEventListener('click', startScanner);
 
     document.getElementById('manual-search-button').addEventListener('click', () => {
