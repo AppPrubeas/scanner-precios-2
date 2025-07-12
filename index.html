@@ -21,7 +21,7 @@
       box-sizing: border-box;
     }
 
-    /* Contenedor del escáner (cámara) */
+    /* --- CAMBIOS AQUÍ: OCULTAR EL CONTENEDOR DEL ESCÁNER COMPLETAMENTE AL PRINCIPIO --- */
     #scanner-container {
       display: none; /* Oculta completamente el contenedor cuando no está en uso */
       position: fixed; /* Ocupa toda la pantalla cuando está visible para tomar la foto */
@@ -29,14 +29,11 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background-color: rgba(0, 0, 0, 0.8); /* Fondo negro semitransparente cuando la cámara está activa */
+      background-color: black; /* Fondo negro cuando la cámara está activa */
       z-index: 1000; /* Asegura que esté por encima de otros elementos */
-      display: flex; /* Usa flex para centrar el contenido (video, frame) */
       justify-content: center;
       align-items: center;
       overflow: hidden; /* Para que el video no se desborde */
-      box-sizing: border-box;
-      flex-direction: column; /* Para apilar el video y la guía si se añadiera texto */
     }
 
     #scanner-container video {
@@ -44,27 +41,8 @@
       width: 100%;
       height: 100%;
       object-fit: cover; /* Cubre toda la pantalla */
-      position: absolute; /* Permite que el frame se superponga */
-      top: 0;
-      left: 0;
     }
-
-    /* Líneas de guía para el código de barras */
-    #barcode-frame {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 70%; /* Ancho del marco */
-        max-width: 400px;
-        height: 15%; /* Altura del marco, más parecido a un código de barras */
-        border: 2px solid #FFD700; /* Amarillo para el marco */
-        transform: translate(-50%, -50%);
-        z-index: 1001; /* Asegura que el marco esté sobre el video */
-        pointer-events: none; /* Permite que los clics pasen a elementos subyacentes */
-        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7); /* Oscurece el exterior del marco */
-        transition: border-color 0.2s ease-in-out; /* Transición suave para el color del borde */
-    }
-
+    /* --- FIN CAMBIOS EN SCANNER-CONTAINER --- */
 
     /* Contenedor principal de los elementos de la interfaz de usuario */
     #content-overlay {
@@ -158,8 +136,7 @@
 </head>
 <body>
 
-  <div id="scanner-container">
-    <div id="barcode-frame"></div> </div>
+  <div id="scanner-container"></div>
 
   <div id="content-overlay">
     <img src="https://images.seeklogo.com/logo-png/29/1/walmart-spark-logo-png_seeklogo-292795.png" alt="Walmart" class="logo">
@@ -189,8 +166,6 @@
   <script>
     // Variables para el estado y los datos
     let scannerActive = false; // Indica si la cámara está activa
-    let timeoutId = null; // Para el temporizador de tiempo de espera del escáner
-    const SCAN_DURATION_MS = 7000; // 7 segundos para escanear
     let lastScannedCode = null;
     let lastSearchTerm = null;
 
@@ -205,7 +180,7 @@
       if (!productName) return "";
       let cleanName = productName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
       const words = cleanName.split(/\s+/);
-      return words.slice(0, 2).join(' '); // Usamos las primeras 2 palabras
+      return words.slice(0, 2).join(' ');
     }
 
     // Función para redirigir a una tienda
@@ -224,7 +199,6 @@
     async function buscarProductoYRedirigir(codigo) {
       lastScannedCode = codigo;
       const infoDisplay = document.getElementById('info');
-      // El mensaje ya se actualizó a '¡Código detectado! Procesando...' justo antes de esta función.
       infoDisplay.innerHTML = `Código detectado: <strong>${codigo}</strong><br>Buscando información del producto...`;
 
       const openFoodFactsUrl = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
@@ -258,7 +232,7 @@
     async function startScanner() {
       // Oculta la interfaz principal y muestra el contenedor del escáner
       document.getElementById('content-overlay').style.display = 'none';
-      document.getElementById('scanner-container').style.display = 'flex'; // Muestra el contenedor de la cámara
+      document.getElementById('scanner-container').style.display = 'block'; // Muestra el contenedor de la cámara
       document.getElementById('info').innerText = 'Activando cámara...';
       document.getElementById('scan-button').disabled = true; // Deshabilita el botón
 
@@ -267,7 +241,7 @@
         const videoDevices = devices.filter(device => device.kind === 'videoinput');
         let selectedDeviceId = null;
 
-        // Lógica para seleccionar la "Main Camera" (cámara trasera)
+        // Lógica para seleccionar la "Main Camera"
         const mainCamera = videoDevices.find(device => 
           device.label.toLowerCase().includes('main') || 
           device.label.toLowerCase().includes('principal') || 
@@ -290,8 +264,8 @@
           audio: false,
           video: { 
               deviceId: { exact: selectedDeviceId },
-              width: { exact: 720 }, // Resolución fija para el stream
-              height: { exact: 480 } // Resolución fija para el stream
+              width: { exact: 720 }, // Resolución fija
+              height: { exact: 480 } // Resolución fija
           }
         };
 
@@ -304,19 +278,15 @@
               constraints: constraints
             },
             decoder: {
-              readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader", "i2of5_reader"]
+              readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader"]
             },
-            locate: true, // Dibuja el recuadro de localización del código
-            patchSize: 'medium', // Tamaño del parche para el procesamiento de imagen
-            halfSample: false, // No reduce la resolución de la imagen (más preciso)
-            numOfWorkers: 0, // Ejecuta en el hilo principal (más simple, pero puede bloquear UI)
-            frequency: 20 // Frecuencia de frames a procesar
+            locate: true // Dibuja el recuadro de localización
           }, function(err) {
             if (err) {
               reject(err);
             } else {
               console.log("Quagga inicializado correctamente. Cámara en vivo.");
-              Quagga.start(); // Inicia el stream de la cámara y el procesamiento
+              Quagga.start(); // Inicia el stream de la cámara
               scannerActive = true;
               document.getElementById('info').innerText = 'Cámara activa. Enfoca el código.';
               resolve();
@@ -324,44 +294,36 @@
           });
         });
 
-        // Este es el detector continuo de códigos (Quagga.onDetected)
-        Quagga.onDetected(result => {
-          if (scannerActive && result && result.codeResult && result.codeResult.code) {
-            const codigo = result.codeResult.code;
-            console.log("Código detectado:", codigo);
-            clearTimeout(timeoutId); // Limpia el temporizador porque se encontró el código
+        // Esperar un breve momento para que la cámara se estabilice (opcional, pero ayuda)
+        await new Promise(r => setTimeout(r, 500)); 
 
-            // *** Nuevo: Feedback visual y pequeña pausa ***
-            const barcodeFrame = document.getElementById('barcode-frame');
-            barcodeFrame.style.borderColor = '#00FF00'; // Cambia el borde a verde
-            // El mensaje se actualizará después de stopScanner()
-            
-            // Introduce un pequeño retraso para la confirmación visual
-            setTimeout(() => {
-              stopScanner(); // Detiene la cámara y vuelve al menú principal
-              // Ahora que la interfaz principal es visible, actualizamos el mensaje
-              document.getElementById('info').innerHTML = `¡Código detectado! Procesando: <strong>${codigo}</strong>...`; 
-              buscarProductoYRedirigir(codigo); // Procesa el código
-            }, 500); // Pausa de 500ms (medio segundo)
-            // *** Fin Nuevo ***
+        // Una vez que la cámara está activa, toma una sola foto y decodifica
+        document.getElementById('info').innerText = 'Tomando foto y analizando...';
+        Quagga.decodeSingle({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: document.querySelector('#scanner-container')
+            },
+            decoder: {
+                readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader"]
+            }
+        }, function(result) {
+            stopScanner(); // Cierra la cámara después de intentar decodificar
 
-          } else {
-            console.log("Detección fallida o resultado nulo en onDetected. Continuar escaneando.");
-          }
+            if (result && result.codeResult) {
+                const codigo = result.codeResult.code;
+                console.log("Código detectado:", codigo);
+                buscarProductoYRedirigir(codigo);
+            } else {
+                console.log("No se detectó ningún código.");
+                document.getElementById('info').innerText = 'No se detectó ningún código. Intenta de nuevo.';
+            }
         });
-
-        // Inicia el temporizador para detener el escaneo si no se detecta nada en SCAN_DURATION_MS
-        timeoutId = setTimeout(() => {
-          if (scannerActive) {
-            console.log(`Tiempo de escaneo agotado (${SCAN_DURATION_MS / 1000}s), no se detectó ningún código.`);
-            stopScanner();
-            document.getElementById('info').innerText = `No se detectó ningún código después de ${SCAN_DURATION_MS / 1000} segundos. Intenta de nuevo o usa el ingreso manual.`;
-          }
-        }, SCAN_DURATION_MS);
 
       } catch (error) {
         console.error("Error al iniciar el escáner:", error);
-        document.getElementById('info').innerText = `Error: ${error.message}. Asegúrate de dar permisos o intenta el ingreso manual.`;
+        document.getElementById('info').innerText = `Error: ${error.message}. Asegúrate de dar permisos.`;
         stopScanner(); // Asegúrate de cerrar todo si falla
       } finally {
         document.getElementById('scan-button').disabled = false; // Re-habilita el botón
@@ -372,20 +334,13 @@
     // Función para detener la cámara y volver a la interfaz principal
     function stopScanner() {
       if (scannerActive) {
-        Quagga.offDetected(); // Remueve el detector continuo
-        Quagga.stop(); // Detiene el stream de la cámara
+        Quagga.stop();
         scannerActive = false;
-        clearTimeout(timeoutId); // Asegura que el temporizador se limpie
         console.log("Cámara detenida.");
       }
-      // Restablecer el color del borde del recuadro
-      const barcodeFrame = document.getElementById('barcode-frame');
-      barcodeFrame.style.borderColor = '#FFD700'; // Restablecer a amarillo
-
       document.getElementById('scanner-container').style.display = 'none'; // Oculta el contenedor de la cámara
       document.getElementById('content-overlay').style.display = 'flex'; // Muestra la interfaz principal
-      // El mensaje se actualiza después de stopScanner, o se restablece si no hubo detección
-      // document.getElementById('info').innerText = 'Listo para escanear.'; 
+      document.getElementById('info').innerText = 'Listo para escanear.'; // Restablece el mensaje
     }
 
     // Event Listeners
@@ -394,7 +349,6 @@
     document.getElementById('manual-search-button').addEventListener('click', () => {
       const codigoManual = document.getElementById('manual-code-input').value.trim();
       if (codigoManual) {
-        if (scannerActive) { stopScanner(); } // Si el escáner está activo, detenerlo
         document.getElementById('info').innerText = `Buscando código manual: ${codigoManual}...`;
         buscarProductoYRedirigir(codigoManual);
       } else {
@@ -403,7 +357,6 @@
     });
 
     document.getElementById('lider-search-button').addEventListener('click', () => {
-        if (scannerActive) { stopScanner(); }
         if (lastSearchTerm) {
             redirectToStore(lastSearchTerm, 'lider');
         } else if (lastScannedCode) {
@@ -414,7 +367,6 @@
     });
 
     document.getElementById('sodimac-search-button').addEventListener('click', () => {
-        if (scannerActive) { stopScanner(); }
         const termToUse = lastSearchTerm || lastScannedCode;
         if (termToUse) {
             redirectToStore(termToUse, 'sodimac');
@@ -422,6 +374,9 @@
             document.getElementById('info').innerText = "No hay un código escaneado o término para buscar.";
         }
     });
+
+    // La cámara no se inicia al cargar la página, así que no necesitamos window.addEventListener('load', initQuaggaCamera);
+    // La interfaz estará visible por defecto.
   </script>
 
 </body>
