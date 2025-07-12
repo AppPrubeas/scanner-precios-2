@@ -43,7 +43,9 @@
       min-height: 100%; /* Asegura que el video ocupe al menos el 100% del alto */
       width: auto; /* Permite que el ancho se ajuste automáticamente */
       height: auto; /* Permite que el alto se ajuste automáticamente */
-      /* object-fit: cover; // Podría usarse si el tamaño del video no es exactamente el del contenedor */
+      /* CLAVE PARA CENTRAR Y CUBRIR: escala el video para cubrir el contenedor */
+      object-fit: cover; 
+      object-position: center; /* Asegura que el centro del video esté centrado en el contenedor */
       display: block; /* Elimina espacios extra */
     }
 
@@ -212,10 +214,15 @@
           type: "LiveStream", // Usa el video en tiempo real de la cámara
           target: document.querySelector('#scanner-container'), // Dónde renderizar el video
           constraints: {
-            facingMode: "environment", // Preferir la cámara trasera en móviles
-            // Puedes ajustar la resolución aquí si la cámara no se ve bien a pantalla completa
-            // width: { min: 640, max: 1280 },
-            // height: { min: 480, max: 720 }
+            // Preferimos la cámara trasera principal.
+            // 'environment' generalmente selecciona la trasera,
+            // pero podemos ser más específicos.
+            facingMode: "environment", 
+            // Podemos añadir un 'deviceId' si conocemos el ID exacto de la cámara preferida.
+            // Opcional: Especificar la resolución deseada para un mejor enfoque y centrado.
+            // Esto puede ayudar a que la imagen se vea mejor en el centro.
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 }
           }
         },
         decoder: {
