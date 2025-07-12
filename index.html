@@ -2,9 +2,10 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Escáner de Precios - Walmart</title>
+  <title>Escáner de Producto</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://unpkg.com/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
     /* Estilos generales del cuerpo de la página */
     body {
@@ -75,6 +76,29 @@
       background-color: #e6c200;
     }
 
+    /* Nuevo estilo para el botón de escaneo con icono */
+    #scan-button {
+      background-color: #FFD700; /* Fondo amarillo */
+      color: #0062E3; /* Texto azul */
+      border: none;
+      border-radius: 50%; /* Lo hace redondo */
+      width: 120px; /* Tamaño del botón */
+      height: 120px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.2s ease;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Sombra para darle profundidad */
+      margin-top: 20px; /* Espacio superior */
+      font-size: 50px; /* Tamaño del icono */
+    }
+
+    #scan-button:hover {
+      background-color: #e6c200;
+      transform: scale(1.05); /* Ligeramente más grande al pasar el mouse */
+    }
+    
     #manual-input-container {
       margin-top: 20px;
       width: 100%;
@@ -106,9 +130,38 @@
       max-width: 400px;
     }
 
-    @media (max-width: 500px) {
-      /* Aquí no hay cambios significativos ya que el scanner-container ahora es pantalla completa cuando visible */
+    /* Estilos para el contenedor del escáner (pantalla completa) */
+    #scanner-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: black;
+      display: none; /* Oculto por defecto */
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      overflow: hidden; /* Asegura que el video no se desborde */
     }
+
+    /* Marco visual para el código de barras */
+    #barcode-frame {
+      position: absolute;
+      width: 80%;
+      max-width: 300px;
+      height: 20%; /* Altura del marco, ajustable */
+      border: 3px solid #FFD700; /* Borde amarillo para el marco */
+      box-sizing: border-box;
+      z-index: 1001; /* Sobre el video */
+    }
+    /* El video del scanner se posiciona aquí */
+    #scanner-container video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* Asegura que el video cubra todo el contenedor */
+    }
+    
   </style>
 </head>
 <body>
@@ -121,10 +174,11 @@
     <img src="https://images.seeklogo.com/logo-png/29/1/walmart-spark-logo-png_seeklogo-292795.png" alt="Walmart" class="logo">
 
     <h1>Escáner de Producto</h1>
-    <p>Presiona "Escanear" para abrir la cámara, escanear el código y volver.</p>
+    <p>Presiona el icono para escanear un código de barras.</p>
 
     <div id="scan-button-container">
-        <button id="scan-button" class="button-primary">Escanear</button>
+        <button id="scan-button" class="button-primary">
+            <i class="fas fa-barcode"></i> </button>
     </div>
 
     <div id="info">Listo para escanear.</div>
@@ -300,7 +354,7 @@
         stopScanner();
       } finally {
         document.getElementById('scan-button').disabled = false;
-        document.getElementById('scan-button').innerText = 'Escanear';
+        // El texto del botón ya no es 'Escanear', sino el icono
       }
     }
 
