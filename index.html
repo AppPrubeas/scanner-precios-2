@@ -44,7 +44,7 @@
       width: auto; /* Permite que el ancho se ajuste automáticamente */
       height: auto; /* Permite que el alto se ajuste automáticamente */
       object-fit: cover; 
-      object-position: 75% center; /* Mueve la imagen de la cámara un 25% a la derecha desde el centro */
+      object-position: center; /* Centra la imagen de la cámara */
       display: block; /* Elimina espacios extra */
     }
 
@@ -59,8 +59,6 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      /* Puedes añadir un fondo semitransparente si el texto es difícil de leer sobre el video */
-      /* background-color: rgba(0, 0, 0, 0.3); */
       border-radius: 8px;
     }
 
@@ -87,14 +85,8 @@
       text-decoration: underline; /* Subrayado para indicar que es un enlace */
     }
 
-    /* Estilos para el contenedor del botón de escaneo */
-    #scan-button-container {
-        margin-top: 20px;
-        margin-bottom: 20px; /* Espacio para separar del input manual */
-    }
-
-    /* Estilos para el botón de escaneo */
-    #scan-button {
+    /* Estilos para los botones generales (escanear, buscar) */
+    .button-primary {
       padding: 15px 30px;
       background-color: #FFD700; /* Amarillo Lider */
       color: #0062E3; /* Texto azul Lider */
@@ -104,65 +96,63 @@
       font-weight: bold;
       font-size: 20px;
       transition: background-color 0.2s ease;
+      margin-top: 10px; /* Pequeño margen para separar */
+      white-space: nowrap; /* Evita que el texto del botón se rompa */
     }
 
-    #scan-button:hover {
+    .button-primary:hover {
       background-color: #e6c200; /* Un amarillo ligeramente más oscuro al pasar el mouse */
     }
 
     /* Estilos para el contenedor de la entrada manual */
     #manual-input-container {
-      margin-top: 30px; /* Más espacio para separar del botón de escaneo */
+      margin-top: 30px;
       width: 100%;
-      display: flex; /* Usar flexbox para alinear el input y el botón */
-      justify-content: center; /* Centrar los elementos flex */
-      align-items: center; /* Alinear verticalmente */
-      flex-wrap: wrap; /* Permite que los elementos se envuelvan en pantallas pequeñas */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
     }
 
     /* Estilos para el campo de entrada de texto manual */
     #manual-code-input {
       padding: 12px;
-      width: calc(80% - 10px); /* Ocupa el 80% del ancho, menos un margen */
-      max-width: 250px; /* Ancho máximo del input */
+      width: calc(80% - 10px);
+      max-width: 250px;
       border: none;
       border-radius: 5px;
-      margin-right: 10px; /* Espacio a la derecha del input */
-      color: #333; /* Color de texto oscuro para el input */
+      margin-right: 10px;
+      color: #333;
       font-size: 16px;
-      box-sizing: border-box; /* Incluye padding en el tamaño */
+      box-sizing: border-box;
     }
 
-    /* Estilos para el botón de búsqueda manual */
-    #manual-search-button {
-      padding: 12px 25px; /* Relleno del botón */
-      background-color: #FFD700; /* Amarillo Lider */
-      color: #0062E3; /* Texto azul Lider */
-      border: none;
-      border-radius: 5px;
-      cursor: pointer; /* Cambiar cursor al pasar por encima */
-      font-weight: bold; /* Texto en negrita */
-      font-size: 16px;
-      transition: background-color 0.2s ease; /* Transición suave para el hover */
-    }
-
-    /* Estilo al pasar el mouse por encima del botón */
-    #manual-search-button:hover {
-      background-color: #e6c200; /* Un amarillo ligeramente más oscuro al pasar el mouse */
+    /* Estilos para el contenedor de opciones de búsqueda */
+    #search-options-container {
+        margin-top: 20px;
+        display: flex;
+        flex-direction: column; /* Apila las opciones verticalmente */
+        align-items: center;
+        gap: 10px; /* Espacio entre los botones */
+        width: 100%;
+        max-width: 400px;
     }
 
     /* Media queries para pantallas más pequeñas (móviles) */
     @media (max-width: 500px) {
       #manual-input-container {
-        flex-direction: column; /* Apila el input y el botón en pantallas pequeñas */
+        flex-direction: column;
       }
       #manual-code-input {
-        width: 90%; /* Más ancho en móviles */
-        margin-right: 0; /* Sin margen a la derecha */
-        margin-bottom: 10px; /* Espacio debajo del input */
+        width: 90%;
+        margin-right: 0;
+        margin-bottom: 10px;
       }
-      #manual-search-button {
-        width: 90%; /* Ocupa casi todo el ancho en móviles */
+      .button-primary {
+        width: 90%; /* Hace que los botones sean más anchos en móviles */
+      }
+      #search-options-container {
+        flex-direction: column;
       }
     }
   </style>
@@ -178,19 +168,35 @@
     <p>Ten el código de barras centrado en la cámara y presiona "Escanear".</p>
 
     <div id="scan-button-container">
-        <button id="scan-button">Escanear</button>
+        <button id="scan-button" class="button-primary">Escanear</button>
     </div>
 
     <div id="info">Esperando escaneo...</div>
 
     <div id="manual-input-container">
       <input type="text" id="manual-code-input" placeholder="Ingresa el código manualmente">
-      <button id="manual-search-button">Buscar Código</button>
+      <button id="manual-search-button" class="button-primary">Buscar Código</button>
     </div>
+
+    <hr style="width: 80%; border-color: rgba(255,255,255,0.3); margin: 30px 0;"> <h2>¿No lo encuentras?</h2>
+    <p>Busca en otras tiendas:</p>
+    <div id="search-options-container">
+        <button id="lider-search-button" class="button-primary">Buscar en Lider.cl</button>
+        <button id="sodimac-search-button" class="button-primary">Buscar en Sodimac.cl</button>
+        </div>
   </div>
 
   <script>
     let scannerStarted = false; // Variable para controlar si el escáner está activo
+    let lastScannedCode = null; // Almacena el último código escaneado o ingresado
+    let lastSearchTerm = null; // Almacena el último término de búsqueda derivado (marca/código)
+
+    // Definición de las URLs de búsqueda para diferentes tiendas
+    const searchUrls = {
+        'lider': 'https://www.lider.cl/supermercado/search?query=',
+        'sodimac': 'https://www.sodimac.cl/sodimac-cl/search/?q=', // Sodimac usa 'q='
+        // 'easy': 'https://www.easy.cl/easy/search/?text=', // Ejemplo si quieres añadir Easy
+    };
 
     /**
      * Extrae la marca o las primeras palabras significativas de un nombre de producto.
@@ -201,17 +207,29 @@
     function extractBrandOrKeywords(productName) {
       if (!productName) return "";
       
-      // Limpia y normaliza el nombre
       let cleanName = productName.toLowerCase()
-                                .replace(/[^a-z0-9\s]/g, '') // Elimina caracteres especiales
+                                .replace(/[^a-z0-9\s]/g, '')
                                 .trim();
 
-      // Divide por espacios y toma las primeras N palabras
       const words = cleanName.split(/\s+/);
 
-      // Tomamos las primeras dos palabras para una mejor precisión que solo una,
-      // pero sin el detalle excesivo del nombre completo.
       return words.slice(0, 2).join(' '); 
+    }
+
+    /**
+     * Realiza la búsqueda del producto y redirige a la URL de la tienda seleccionada.
+     * @param {string} term - El término de búsqueda (código o marca/palabra clave).
+     * @param {string} storeKey - La clave de la tienda (ej. 'lider', 'sodimac').
+     */
+    function redirectToStore(term, storeKey) {
+        if (!term || !searchUrls[storeKey]) {
+            console.error("Término de búsqueda o tienda inválida.", term, storeKey);
+            document.getElementById('info').innerText = "Error: No se pudo redirigir. Intenta de nuevo.";
+            return;
+        }
+        const url = searchUrls[storeKey] + encodeURIComponent(term);
+        window.open(url, '_blank');
+        document.getElementById('info').innerText = `Redirigiendo a ${storeKey.toUpperCase()} con: '${term}'...`;
     }
 
     /**
@@ -221,6 +239,7 @@
      * @param {string} codigo - El código de barras a buscar.
      */
     async function buscarProductoYRedirigir(codigo) {
+      lastScannedCode = codigo; // Almacena el código para futuras búsquedas en otras tiendas
       const infoDisplay = document.getElementById('info');
       infoDisplay.innerHTML = `Código detectado: <strong>${codigo}</strong><br>Buscando información del producto...`;
 
@@ -232,32 +251,26 @@
         const response = await fetch(openFoodFactsUrl);
         const data = await response.json();
 
-        // Verifica si la API devolvió datos válidos y un nombre de producto
         if (data.status === 1 && data.product && data.product.product_name) {
           productFullName = data.product.product_name;
-          // Usa la función para extraer la marca/palabras clave
           searchTermForLider = extractBrandOrKeywords(productFullName);
 
-          infoDisplay.innerHTML = `Producto: <strong>${productFullName}</strong><br>Buscando '${searchTermForLider}' en Lider.cl...`;
+          infoDisplay.innerHTML = `Producto: <strong>${productFullName}</strong><br>Redirigiendo a Lider.cl con: '${searchTermForLider}'...`;
           console.log("Nombre completo de Open Food Facts:", productFullName);
           console.log("Término de búsqueda para Lider.cl (marca/palabras clave):", searchTermForLider);
 
         } else {
-          // Si no se encuentra el producto o el nombre en Open Food Facts, se usa el código por defecto
           infoDisplay.innerHTML = `Producto no encontrado en Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
           console.log("Producto no encontrado en Open Food Facts para el código:", codigo);
         }
       } catch (err) {
-        // Manejo de errores de red o API
         console.error("Error al consultar Open Food Facts:", err);
         infoDisplay.innerHTML = `Error al consultar Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
       }
-
-      // **CAMBIO CLAVE: Usa 'query' en lugar de 'Ntt' para la URL de Lider.cl**
-      const urlLider = `https://www.lider.cl/supermercado/search?query=${encodeURIComponent(searchTermForLider)}`;
       
-      // Abre la URL en una nueva pestaña/ventana
-      window.open(urlLider, '_blank');
+      lastSearchTerm = searchTermForLider; // Almacena el término de búsqueda derivado
+
+      redirectToStore(searchTermForLider, 'lider'); // Redirige a Lider.cl por defecto
     }
 
     /**
@@ -267,10 +280,10 @@
     function initQuagga() {
       Quagga.init({
         inputStream: {
-          type: "LiveStream", // Usa el video en tiempo real de la cámara
-          target: document.querySelector('#scanner-container'), // Dónde renderizar el video
+          type: "LiveStream",
+          target: document.querySelector('#scanner-container'),
           constraints: {
-            facingMode: "environment", // Preferir la cámara trasera principal.
+            facingMode: "environment",
             width: { min: 640, ideal: 1280, max: 1920 },
             height: { min: 480, ideal: 720, max: 1080 }
           }
@@ -282,27 +295,25 @@
         if (err) {
           console.error("Error al iniciar la cámara:", err);
           document.getElementById('info').innerText = "Error al iniciar la cámara. Asegúrate de dar permisos o intenta ingresar el código manualmente.";
-          document.getElementById('scanner-container').style.display = 'none'; // Oculta el contenedor del escáner
-          document.body.style.backgroundColor = '#0062E3'; // Asegura el fondo azul
+          document.getElementById('scanner-container').style.display = 'none';
+          document.body.style.backgroundColor = '#0062E3';
           return;
         }
         console.log("Quagga inicializado correctamente. Listo para escanear.");
-        // NO llamamos a Quagga.start() aquí. Solo lo haremos con el botón.
       });
 
-      // Este evento se dispara cuando Quagga detecta un código de barras
       Quagga.onDetected(result => {
         const codigo = result.codeResult.code;
         console.log("Código detectado:", codigo);
-        Quagga.stop(); // Detener el escáner inmediatamente después de la detección
-        scannerStarted = false; // Reiniciar estado
+        Quagga.stop();
+        scannerStarted = false;
         document.getElementById('info').innerText = `Código detectado: ${codigo}. Procesando...`;
-        document.getElementById('scan-button').innerText = 'Re-Escanear'; // Cambiar texto del botón
+        document.getElementById('scan-button').innerText = 'Re-Escanear';
         buscarProductoYRedirigir(codigo);
       });
     }
 
-    // Función para iniciar o reiniciar el escáner cuando se presiona el botón
+    // Event Listener para el botón de ESCANEAR
     document.getElementById('scan-button').addEventListener('click', () => {
       if (!scannerStarted) {
         Quagga.start();
@@ -317,22 +328,42 @@
       }
     });
 
-
-    // Agrega un event listener al botón de búsqueda manual
+    // Event Listener para el botón de BÚSQUEDA MANUAL
     document.getElementById('manual-search-button').addEventListener('click', () => {
       const codigoManual = document.getElementById('manual-code-input').value.trim();
       if (codigoManual) {
-        // Detener Quagga si está activo antes de buscar manualmente para evitar conflictos
         if (typeof Quagga !== 'undefined' && Quagga.initialized && scannerStarted) {
             Quagga.stop();
             scannerStarted = false;
-            document.getElementById('scan-button').innerText = 'Escanear'; // Asegurar que el botón vuelva a su estado original
+            document.getElementById('scan-button').innerText = 'Escanear';
         }
         document.getElementById('info').innerText = `Buscando código manual: ${codigoManual}...`;
         buscarProductoYRedirigir(codigoManual);
       } else {
         document.getElementById('info').innerText = "Por favor, ingresa un código de barras para buscar.";
       }
+    });
+
+    // Event Listener para el botón de búsqueda en Lider (opcional, si el usuario quiere reintentar)
+    document.getElementById('lider-search-button').addEventListener('click', () => {
+        if (lastSearchTerm) {
+            redirectToStore(lastSearchTerm, 'lider');
+        } else if (lastScannedCode) {
+            redirectToStore(lastScannedCode, 'lider');
+        } else {
+            document.getElementById('info').innerText = "No hay un código escaneado o término para buscar.";
+        }
+    });
+
+    // Event Listener para el botón de búsqueda en Sodimac
+    document.getElementById('sodimac-search-button').addEventListener('click', () => {
+        // Para Sodimac, si no tenemos un nombre de producto, es mejor usar el código.
+        const termToUse = lastSearchTerm || lastScannedCode; 
+        if (termToUse) {
+            redirectToStore(termToUse, 'sodimac');
+        } else {
+            document.getElementById('info').innerText = "No hay un código escaneado o término para buscar.";
+        }
     });
 
     // Inicializa Quagga (solo la cámara, no el escaneo) cuando la página se carga
