@@ -154,6 +154,7 @@
     const searchUrls = {
         'lider': 'https://www.lider.cl/supermercado/search?query=',
         'sodimac': 'https://www.sodimac.cl/sodimac-cl/search/?q=',
+        'goUpc': 'https://go-upc.com/es/barcode-lookup/' // Nueva URL para go-upc.com
     };
 
     // Función para extraer marca o palabras clave del nombre del producto
@@ -180,34 +181,29 @@
     async function buscarProductoYRedirigir(codigo) {
       lastScannedCode = codigo;
       const infoDisplay = document.getElementById('info');
-      // El mensaje ya se actualizó a '¡Código detectado! Procesando...' justo antes de esta función.
       infoDisplay.innerHTML = `Código detectado: <strong>${codigo}</strong><br>Buscando información del producto...`;
 
-      const openFoodFactsUrl = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
+      // Ahora usamos go-upc.com para buscar el producto
+      const goUpcUrl = searchUrls['goUpc'] + codigo;
       let searchTermForLider = codigo; // Por defecto, usa el código de barras
-      let productFullName = null;
 
       try {
-        const response = await fetch(openFoodFactsUrl);
-        const data = await response.json();
+        // Redirigimos directamente a go-upc.com con el código
+        redirectToStore(codigo, 'goUpc');
+        infoDisplay.innerHTML = `Producto no encontrado en la base de datos local.<br>Redirigiendo a go-upc.com con el código...`;
+        console.log("Redirigiendo a go-upc.com para el código:", codigo);
 
-        if (data.status === 1 && data.product && data.product.product_name) {
-          productFullName = data.product.product.product_name;
-          searchTermForLider = extractBrandOrKeywords(productFullName); // Usa marca/palabras clave si hay nombre
-          infoDisplay.innerHTML = `Producto: <strong>${productFullName}</strong><br>Redirigiendo a Lider.cl con: '${searchTermForLider}'...`;
-          console.log("Nombre completo de Open Food Facts:", productFullName);
-          console.log("Término de búsqueda para Lider.cl (marca/palabras clave):", searchTermForLider);
-        } else {
-          infoDisplay.innerHTML = `Producto no encontrado en Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
-          console.log("Producto no encontrado en Open Food Facts para el código:", codigo);
-        }
       } catch (err) {
-        console.error("Error al consultar Open Food Facts:", err);
-        infoDisplay.innerHTML = `Error al consultar Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
+        console.error("Error al consultar go-upc.com (aunque estamos redirigiendo directamente):", err);
+        infoDisplay.innerHTML = `Error al intentar redirigir a go-upc.com.<br>Redirigiendo a Lider.cl con el código...`;
+        // Si hay un error al intentar redirigir, aún podemos intentar con Lider.cl como fallback
+        lastSearchTerm = searchTermForLider;
+        redirectToStore(searchTermForLider, 'lider');
       }
 
-      lastSearchTerm = searchTermForLider;
-      redirectToStore(searchTermForLider, 'lider');
+      // Si no redirigimos directamente a go-upc.com por algún motivo, caemos a Lider
+      // lastSearchTerm = searchTermForLider; // Esto ya no es necesario aquí si siempre redirigimos a go-upc.com primero
+      // redirectToStore(searchTermForLider, 'lider'); // Esto ahora sería un fallback si el primary search fails
     }
 
     // Función para iniciar la cámara (se llama al presionar el botón)
@@ -359,10 +355,10 @@
 
     document.getElementById('lider-search-button').addEventListener('click', () => {
         if (scannerActive) { stopScanner(); }
-        if (lastSearchTerm) {
-            redirectToStore(lastSearchTerm, 'lider');
-        } else if (lastScannedCode) {
-            redirectToStore(lastScannedCode, 'lider');
+        // Si hay un término de búsqueda previo o un código escaneado, úsalo para Lider
+        const termToUse = lastSearchTerm || lastScannedCode;
+        if (termToUse) {
+            redirectToStore(termToUse, 'lider');
         } else {
             document.getElementById('info').innerText = "No hay un código escaneado o término para buscar.";
         }
