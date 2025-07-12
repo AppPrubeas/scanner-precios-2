@@ -30,19 +30,24 @@
     /* Estilos para el contenedor del escáner de la cámara */
     #scanner-container {
       width: 100%;
-      max-width: 400px; /* Ancho máximo para el video del escáner */
+      max-width: 200px; /* REDUCIDO A LA MITAD: Antes 400px, ahora 200px */
+      height: 150px; /* Añadido una altura fija para un aspecto más controlado */
       margin: auto; /* Centrar horizontalmente */
       border: 2px solid white; /* Borde blanco alrededor del video */
       margin-bottom: 20px; /* Espacio debajo del contenedor */
       position: relative; /* Necesario para posicionar el video dentro */
       overflow: hidden; /* Oculta cualquier parte del video que se desborde */
       border-radius: 8px; /* Bordes ligeramente redondeados */
+      display: flex; /* Para centrar el video vertical y horizontalmente si es necesario */
+      justify-content: center;
+      align-items: center;
     }
 
     /* Estilos para el elemento de video dentro del contenedor del escáner */
     #scanner-container video {
       width: 100%; /* El video ocupa todo el ancho del contenedor */
-      height: auto; /* Altura automática para mantener la proporción */
+      height: 100%; /* El video ocupa toda la altura del contenedor */
+      object-fit: cover; /* Asegura que el video cubra el área, recortando si es necesario */
       display: block; /* Elimina espacios extra debajo del video */
     }
 
@@ -54,7 +59,7 @@
       padding: 15px;
       border-radius: 8px;
       width: 100%;
-      max-width: 400px;
+      max-width: 400px; /* Mantener el ancho para el texto de info */
       box-sizing: border-box;
     }
 
@@ -139,32 +144,14 @@
 
   <script>
     /**
-     * Busca información de un producto en OpenFoodFacts.org usando su código de barras.
-     * Si lo encuentra, muestra el nombre del producto y un enlace para buscarlo en Lider.cl.
-     * Si no, ofrece buscar directamente el código en Lider.cl.
+     * Redirige al usuario a la página de búsqueda de Lider.cl con el código de barras.
      * @param {string} codigo - El código de barras a buscar.
      */
-    function buscarEnOpenFoodFacts(codigo) {
-      const url = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
-      fetch(url)
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === 1 && data.product) {
-            const nombre = data.product.product_name || "Producto sin nombre";
-            document.getElementById('info').innerHTML =
-              `Producto: <strong>${nombre}</strong><br><a href="https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(nombre)}" target="_blank">Buscar en Lider.cl</a>`;
-          } else {
-            // Si no se encuentra en OpenFoodFacts o la respuesta no es válida
-            document.getElementById('info').innerText = "Producto no encontrado en OpenFoodFacts.";
-            document.getElementById('info').innerHTML += `<br><a href="https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(codigo)}" target="_blank">Buscar '${codigo}' en Lider.cl</a>`;
-          }
-        })
-        .catch(err => {
-          console.error("Error consultando OpenFoodFacts:", err);
-          document.getElementById('info').innerText = "Error al consultar la base de datos de productos.";
-          // Ofrecer la búsqueda en Lider.cl incluso si hay un error de red o API
-          document.getElementById('info').innerHTML += `<br><a href="https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(codigo)}" target="_blank">Buscar '${codigo}' en Lider.cl</a>`;
-        });
+    function buscarEnLider(codigo) {
+      // Codifica el código de barras para que sea seguro en una URL
+      const urlLider = `https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(codigo)}`;
+      document.getElementById('info').innerHTML = `Código detectado: <strong>${codigo}</strong><br>Redirigiendo a Lider.cl...`;
+      window.open(urlLider, '_blank'); // Abre la URL en una nueva pestaña
     }
 
     /**
@@ -176,7 +163,9 @@
           type: "LiveStream", // Usa el video en tiempo real de la cámara
           target: document.querySelector('#scanner-container'), // Dónde renderizar el video
           constraints: {
-            facingMode: "environment" // Preferir la cámara trasera en móviles
+            facingMode: "environment", // Preferir la cámara trasera en móviles
+            // width: { min: 320, max: 640 }, // Puedes ajustar esto si la cámara es muy grande
+            // height: { min: 240, max: 480 }
           }
         },
         decoder: {
@@ -197,10 +186,9 @@
       // Evento que se dispara cuando Quagga detecta un código de barras
       Quagga.onDetected(result => {
         const codigo = result.codeResult.code;
-        document.getElementById('info').innerText = `Código detectado: ${codigo}`;
-        Quagga.stop(); // Detener el escáner después de una detección exitosa
         console.log("Código detectado:", codigo);
-        buscarEnOpenFoodFacts(codigo); // Buscar el código detectado
+        Quagga.stop(); // Detener el escáner después de una detección exitosa
+        buscarEnLider(codigo); // Redirige directamente a Lider.cl
       });
     }
 
@@ -214,7 +202,7 @@
             console.log("Escáner detenido para búsqueda manual.");
         }
         document.getElementById('info').innerText = `Buscando código manual: ${codigoManual}...`;
-        buscarEnOpenFoodFacts(codigoManual); // Realiza la búsqueda con el código manual
+        buscarEnLider(codigoManual); // Realiza la búsqueda con el código manual
       } else {
         document.getElementById('info').innerText = "Por favor, ingresa un código de barras para buscar.";
       }
