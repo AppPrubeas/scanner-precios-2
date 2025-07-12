@@ -9,31 +9,33 @@
     /* Estilos generales del cuerpo de la página */
     body {
       font-family: Arial, sans-serif;
-      background-color: #0062E3;
+      background-color: #0062E3; /* Fondo azul Lider */
       color: white;
       text-align: center;
-      padding-top: 20px; /* Añadido padding para separar el rectángulo del borde superior */
+      padding-top: 20px;
       margin: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      box-sizing: border-box; /* Asegura que el padding no afecte el alto total */
+      box-sizing: border-box;
     }
 
     /* Contenedor del video de la cámara: ahora un rectángulo centrado */
     #scanner-container {
-      position: relative; /* Necesario para posicionar el video dentro */
+      position: relative;
       width: 80%; /* Ancho del rectángulo */
       max-width: 600px; /* Ancho máximo */
       height: 300px; /* Altura del rectángulo */
-      background-color: #333; /* Color de fondo mientras carga la cámara */
-      margin: 20px auto; /* Centrar horizontalmente y dar margen vertical */
-      overflow: hidden; /* Recorta el video si se desborda */
+      background-color: #0062E3; /* CAMBIO: Color de fondo coincide con el body */
+      margin: 20px auto;
+      overflow: hidden;
       border-radius: 10px;
       display: flex;
       justify-content: center;
       align-items: center;
+      /* Asegurarse de que no haya bordes visibles si el video no cubre 100% */
+      border: 1px solid #0062E3; /* Borde del mismo color que el fondo */
     }
 
     #scanner-container video {
@@ -41,6 +43,7 @@
       width: 100%;
       height: 100%;
       object-fit: cover; /* Cubre el rectángulo manteniendo la relación de aspecto */
+      /* No se necesita position: absolute; transform: translate... si width/height 100% y object-fit cover */
     }
 
     /* Contenedor principal de los elementos de la interfaz de usuario */
@@ -53,7 +56,6 @@
       flex-direction: column;
       align-items: center;
       border-radius: 8px;
-      /* No es necesario background-color aquí ya que el body es azul */
     }
 
     /* Estilos para el logo de Lider */
@@ -202,7 +204,7 @@
             document.getElementById('info').innerText = "Error: No se pudo redirigir. Intenta de nuevo.";
             return;
         }
-        const url = searchUrls [storeKey] + encodeURIComponent(term);
+        const url = searchUrls[storeKey] + encodeURIComponent(term);
         window.open(url, '_blank');
         document.getElementById('info').innerText = `Redirigiendo a ${storeKey.toUpperCase()} con: '${term}'...`;
     }
@@ -245,25 +247,38 @@
           let videoDevices = devices.filter(device => device.kind === 'videoinput');
           let selectedDeviceId = null;
 
-          if (videoDevices.length > 1) {
-            // Intenta seleccionar una cámara que NO tenga "environment" en su label (heurística para no ser la trasera)
-            const nonEnvironmentCamera = videoDevices.find(device => !device.label.toLowerCase().includes('back') && !device.label.toLowerCase().includes('rear') && !device.label.toLowerCase().includes('environment'));
-            if (nonEnvironmentCamera) {
-              selectedDeviceId = nonEnvironmentCamera.deviceId;
-              console.log("Intentando usar cámara:", nonEnvironmentCamera.label);
-            } else if (videoDevices.length > 0) {
-              // Si no se encuentra una no "environment", usa la primera que encuentres (puede ser la trasera igual)
-              selectedDeviceId = videoDevices [0].deviceId;
-              console.log("Usando la primera cámara encontrada:", videoDevices [0].label);
-            }
-          } else if (videoDevices.length === 1) {
-            selectedDeviceId = videoDevices [0].deviceId;
-            console.log("Usando la única cámara encontrada:", videoDevices [0].label);
+          // Intenta encontrar la "main camera" buscando palabras clave en la etiqueta
+          const mainCamera = videoDevices.find(device => 
+            device.label.toLowerCase().includes('main') || 
+            device.label.toLowerCase().includes('principal') || 
+            device.label.toLowerCase().includes('environment') || // 'environment' suele ser la trasera/principal
+            device.label.toLowerCase().includes('back') ||
+            device.label.toLowerCase().includes('rear')
+          );
+
+          if (mainCamera) {
+            selectedDeviceId = mainCamera.deviceId;
+            console.log("Intentando usar la 'Main Camera' (o equivalente):", mainCamera.label);
+          } else if (videoDevices.length > 0) {
+            // Si no se encuentra una 'main', usa la primera disponible (fallback)
+            selectedDeviceId = videoDevices[0].deviceId;
+            console.log("No se encontró 'Main Camera', usando la primera disponible:", videoDevices[0].label);
+          } else {
+            console.warn("No se encontraron cámaras de video.");
+            document.getElementById('info').innerText = "No se encontraron cámaras. Asegúrate de tener una y dar permisos.";
+            document.getElementById('scanner-container').style.backgroundColor = '#555';
+            return; // Salir si no hay cámaras
           }
 
           const constraints = {
             audio: false,
-            video: selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : { facingMode: 'environment' } // Intenta usar la seleccionada o la trasera por defecto
+            video: { 
+                deviceId: { exact: selectedDeviceId },
+                // Las restricciones ideales pueden seguir siendo útiles para la resolución
+                width: { ideal: window.innerWidth > 720 ? 1280 : 720 },
+                height: { ideal: window.innerWidth > 720 ? 720 : 480 },
+                aspectRatio: { ideal: window.innerWidth > 720 ? 1.777 : 1.333 }
+            }
           };
 
           Quagga.init({
@@ -280,7 +295,7 @@
             if (err) {
               console.error("Error al iniciar la cámara:", err);
               document.getElementById('info').innerText = "Error al iniciar la cámara. Asegúrate de dar permisos o intenta ingresar el código manualmente.";
-              document.getElementById('scanner-container').style.backgroundColor = '#555'; // Indica error visualmente
+              document.getElementById('scanner-container').style.backgroundColor = '#555';
               return;
             }
             console.log("Quagga inicializado correctamente. Cámara en vivo.");
@@ -290,34 +305,72 @@
           });
         })
         .catch(error => {
-          console.error("Error al enumerar dispositivos de video:", error);
-          document.getElementById('info').innerText = "Error al acceder a la cámara. Revisa los permisos.";
+          console.error("Error al enumerar dispositivos de video o acceder a la cámara:", error);
+          document.getElementById('info').innerText = "Error al acceder a la cámara. Revisa los permisos e intenta de nuevo.";
           document.getElementById('scanner-container').style.backgroundColor = '#555';
         });
 
+      // Se mantiene el evento onDetected para el modo de escaneo continuo.
+      // Si el objetivo es solo 'tomar foto y analizar', este handler se activaría
+      // en el modo de escaneo continuo (si se vuelve a habilitar).
+      // Para el modo de "foto por botón", la lógica está en el click del botón.
+      // Si solo quieres el modo "foto", puedes eliminar este Quagga.onDetected general.
       Quagga.onDetected(result => {
+        // En el modo de "foto y analizar", esta función no se usa directamente al presionar el botón.
+        // Se usa Quagga.decodeSingle. Pero si decides volver al escaneo continuo, es útil.
+        // Por ahora, para evitar confusión, comentaré su lógica si solo usas el botón de "foto".
+        // Si quieres que el escáner detecte automáticamente también, puedes dejarla.
+        // Para este caso, dado que el botón ahora "toma una foto", es menos probable que quieras un onDetected constante.
+        // Pero lo dejo para ilustrar la opción.
+        /*
         const codigo = result.codeResult.code;
-        console.log("Código detectado:", codigo);
+        console.log("Código detectado automáticamente (si escaneo continuo):", codigo);
         Quagga.stop();
         scannerStarted = false;
-        document.getElementById('info').innerText = `Código detectado: ${codigo}. Procesando...`;
+        document.getElementById('info').innerText = `Código detectado automáticamente: ${codigo}. Procesando...`;
         document.getElementById('scan-button').innerText = 'Re-Escanear';
         buscarProductoYRedirigir(codigo);
+        */
       });
     }
 
     document.getElementById('scan-button').addEventListener('click', () => {
-      if (!scannerStarted) {
-        Quagga.start();
-        scannerStarted = true;
-        document.getElementById('info').innerText = 'Escaneando... Mantén el código fijo en el rectángulo.';
-        document.getElementById('scan-button').innerText = 'Detener Escaneo';
-      } else {
-        Quagga.stop();
-        scannerStarted = false;
-        document.getElementById('info').innerText = 'Escaneo detenido. Presiona "Escanear" para reanudar.';
-        document.getElementById('scan-button').innerText = 'Escanear';
-      }
+        // Asegúrate de que la cámara esté activa para tomar la foto
+        if (!scannerStarted) {
+            document.getElementById('info').innerText = "La cámara no está activa. Recarga la página o revisa los permisos.";
+            // Intenta reiniciar la cámara si no está activa
+            initQuaggaCamera(); 
+            return;
+        }
+        
+        document.getElementById('info').innerText = 'Analizando imagen...';
+        document.getElementById('scan-button').disabled = true; // Deshabilita el botón mientras analiza
+        document.getElementById('scan-button').innerText = 'Analizando...';
+
+        // Usa Quagga.decodeSingle para analizar un solo fotograma
+        Quagga.decodeSingle({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream", // Quagga tomará un fotograma del stream de video activo
+                target: document.querySelector('#scanner-container') // Desde donde tomar el fotograma
+            },
+            decoder: {
+                readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader"]
+            }
+        }, function(result) {
+            document.getElementById('scan-button').disabled = false; // Habilita el botón de nuevo
+
+            if (result && result.codeResult) {
+                const codigo = result.codeResult.code;
+                console.log("Código detectado en imagen:", codigo);
+                document.getElementById('scan-button').innerText = 'Re-Escanear';
+                buscarProductoYRedirigir(codigo);
+            } else {
+                console.log("No se detectó ningún código en la imagen.");
+                document.getElementById('info').innerText = 'No se detectó ningún código. Intenta centrarlo mejor o acércate/aléjate.';
+                document.getElementById('scan-button').innerText = 'Escanear'; // Vuelve al estado inicial
+            }
+        });
     });
 
     document.getElementById('manual-search-button').addEventListener('click', () => {
