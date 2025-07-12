@@ -21,7 +21,7 @@
     }
 
     #scanner-container {
-      display: none;
+      display: none; /* Inicia oculto */
       position: fixed;
       top: 0;
       left: 0;
@@ -33,8 +33,6 @@
       justify-content: center;
       align-items: center;
       overflow: hidden;
-      /* Eliminar el borde si el mensaje de "centra el código" ya lo indica */
-      /* border: 2px solid rgba(255, 255, 255, 0.5); */ 
       box-sizing: border-box;
       flex-direction: column; /* Para apilar el video y el texto de guía */
       gap: 10px; /* Espacio entre video y texto */
@@ -50,19 +48,21 @@
       left: 0;
     }
 
-    /* Nuevo estilo para el mensaje de guía dentro del scanner-container */
+    /* Estilos para el mensaje de guía (ahora comentado, si no lo vas a usar) */
+    /*
     #scan-guidance {
-      position: relative; /* Para que esté por encima del video */
+      position: relative;
       z-index: 1001;
-      background-color: rgba(0, 0, 0, 0.5); /* Fondo semitransparente para legibilidad */
+      background-color: rgba(0, 0, 0, 0.5);
       padding: 10px 20px;
       border-radius: 8px;
       font-size: 1.2em;
       color: white;
       text-shadow: 1px 1px 2px black;
-      max-width: 80%; /* Para que el texto no sea demasiado ancho */
+      max-width: 80%;
       text-align: center;
     }
+    */
 
     /* Líneas de guía más visuales */
     #barcode-frame {
@@ -166,8 +166,7 @@
 
   <div id="scanner-container">
     <div id="barcode-frame"></div>
-    <div id="scan-guidance">Centa el código de barras en el recuadro.</div>
-  </div>
+    </div>
 
   <div id="content-overlay">
     <img src="https://images.seeklogo.com/logo-png/29/1/walmart-spark-logo-png_seeklogo-292795.png" alt="Walmart" class="logo">
@@ -209,8 +208,8 @@
     function extractBrandOrKeywords(productName) {
       if (!productName) return "";
       let cleanName = productName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
-      const words = cleanName.slice(0, 3).join(' '); // Aumentamos a 3 palabras para más contexto
-      return words;
+      const words = cleanName.split(/\s+/); // CORRECCIÓN: Usar split() para obtener un array de palabras
+      return words.slice(0, 3).join(' '); // Tomar las primeras 3 y unirlas de nuevo
     }
 
     function redirectToStore(term, storeKey) {
@@ -302,15 +301,13 @@
               constraints: constraints
             },
             decoder: {
-              readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader", "i2of5_reader"] // Añadido I2of5
+              readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader", "i2of5_reader"]
             },
             locate: true,
-            // --- AJUSTES PARA MEJORAR LA DETECCIÓN ---
-            patchSize: 'medium', // 'x-small', 'small', 'medium', 'large', 'x-large'
-            halfSample: false, // Intentar con false para códigos más nítidos
-            numOfWorkers: 0, // 0 para ejecutar en el hilo principal (puede ser más estable)
-            frequency: 20 // Mayor frecuencia de procesamiento
-            // --- FIN AJUSTES ---
+            patchSize: 'medium',
+            halfSample: false,
+            numOfWorkers: 0,
+            frequency: 20
           }, function(err) {
             if (err) {
               reject(err);
@@ -318,24 +315,26 @@
               console.log("Quagga inicializado correctamente. Cámara en vivo.");
               Quagga.start();
               scannerActive = true;
-              document.getElementById('scan-guidance').innerText = 'Centa el código de barras en el recuadro.';
+              // Eliminado: document.getElementById('scan-guidance').style.display = 'block';
               resolve();
             }
           });
         });
 
+        // Este es el detector continuo de códigos
         Quagga.onDetected(result => {
           if (scannerActive && result && result.codeResult && result.codeResult.code) {
             const codigo = result.codeResult.code;
             console.log("Código detectado:", codigo);
-            clearTimeout(timeoutId);
-            stopScanner();
-            buscarProductoYRedirigir(codigo);
+            clearTimeout(timeoutId); // Limpia el temporizador porque se encontró el código
+            stopScanner(); // Detiene la cámara y vuelve al menú
+            buscarProductoYRedirigir(codigo); // Procesa el código
           } else {
-            console.log("Detección fallida o resultado nulo en onDetected.");
+            console.log("Detección fallida o resultado nulo en onDetected. Continuar escaneando.");
           }
         });
 
+        // Inicia el temporizador para detener el escaneo si no se detecta nada
         timeoutId = setTimeout(() => {
           if (scannerActive) {
             console.log(`Tiempo de escaneo agotado (${SCAN_DURATION_MS / 1000}s), no se detectó ningún código.`);
@@ -347,7 +346,7 @@
       } catch (error) {
         console.error("Error al iniciar el escáner:", error);
         document.getElementById('info').innerText = `Error: ${error.message}. Asegúrate de dar permisos o intenta el ingreso manual.`;
-        stopScanner();
+        stopScanner(); // Asegúrate de cerrar todo si falla
       } finally {
         document.getElementById('scan-button').disabled = false;
         document.getElementById('scan-button').innerText = 'Escanear';
@@ -356,14 +355,15 @@
 
     function stopScanner() {
       if (scannerActive) {
-        Quagga.offDetected();
-        Quagga.stop();
+        Quagga.offDetected(); // Remueve el detector continuo
+        Quagga.stop(); // Detiene el stream de la cámara
         scannerActive = false;
-        clearTimeout(timeoutId);
+        clearTimeout(timeoutId); // Asegura que el temporizador se limpie
         console.log("Cámara detenida.");
       }
       document.getElementById('scanner-container').style.display = 'none';
-      document.getElementById('content-overlay').style.display = 'flex';
+      // Eliminado: document.getElementById('scan-guidance').style.display = 'none';
+      document.getElementById('content-overlay').style.display = 'flex'; // Muestra la interfaz principal
       document.getElementById('info').innerText = 'Listo para escanear.';
     }
 
