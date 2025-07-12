@@ -151,7 +151,7 @@
         height: 100%;
         object-fit: cover; /* Asegura que el video cubra todo el contenedor */
         object-position: center; /* Centra el contenido del video */
-        /* Si la imagen se ve volteada como un espejo, descomenta la siguiente línea */
+        /* OPCIONAL: Si la imagen se ve volteada como un espejo, descomenta la siguiente línea */
         /* transform: scaleX(-1); */ 
         filter: brightness(1.2); /* Ajuste opcional para mejorar la visibilidad */
     }
@@ -184,7 +184,7 @@
 <body>
 
   <div id="scanner-container">
-    <video id="video-stream"></video> 
+    <video id="video-stream" playsinline></video> 
     <div id="barcode-frame"></div>
   </div>
 
@@ -210,7 +210,6 @@
     <p>Busca en otras tiendas:</p>
     <div id="search-options-container">
         <button id="lider-search-button" class="button-primary">Buscar en Lider.cl</button>
-        <button id="sodimac-search-button" class="button-primary">Buscar en Sodimac.cl</button>
     </div>
   </div>
 
@@ -225,7 +224,6 @@
     // URLs de búsqueda para las tiendas
     const searchUrls = {
         'lider': 'https://www.lider.cl/supermercado/search?query=',
-        'sodimac': 'https://www.sodimac.cl/sodimac-cl/search/?q=',
         'openFoodFactsApi': 'https://world.openfoodfacts.org/api/v0/product/'
     };
 
@@ -288,6 +286,7 @@
             throw new Error("No se encontraron cámaras de video.");
         }
 
+        // Intenta encontrar una cámara trasera (main, environment, back, rear)
         const mainCamera = videoDevices.find(device => 
           device.label.toLowerCase().includes('main') || 
           device.label.toLowerCase().includes('principal') || 
@@ -306,16 +305,24 @@
 
         const constraints = {
           audio: false,
+          // Cambiamos a 'video: true' en lugar de 'deviceId' para una selección más genérica al principio,
+          // lo cual puede aumentar la compatibilidad si el problema es la selección específica de la cámara.
+          // Si esto funciona, podemos reintroducir deviceId para la cámara trasera.
           video: { 
-              deviceId: { exact: selectedDeviceId },
-              // Altura y anchura ideales para Quagga. A veces, resoluciones muy altas dan problemas.
-              width: { ideal: 1280 }, // Intenta con una resolución ideal
-              height: { ideal: 720 }
+              // Asegura que las resoluciones sean aceptables para la mayoría de cámaras
+              width: { min: 640, ideal: 1280 }, 
+              height: { min: 480, ideal: 720 },
+              facingMode: "environment" // Preferir cámara trasera
           }
         };
 
+        // Si se seleccionó un deviceId específico, lo añadimos a las constraints
+        if (selectedDeviceId) {
+            constraints.video.deviceId = { exact: selectedDeviceId };
+        }
+
+
         // Inicializar Quagga
-        // El target ahora es el elemento <video id="video-stream">
         await new Promise((resolve, reject) => {
           Quagga.init({
             inputStream: {
@@ -433,16 +440,6 @@
             redirectToStore(termToUse, 'lider');
         } else {
             document.getElementById('info').innerText = "No hay un código escaneado o ingresado para buscar en Lider.cl.";
-        }
-    });
-
-    document.getElementById('sodimac-search-button').addEventListener('click', () => {
-        if (scannerActive) { stopScanner(); }
-        const termToUse = lastSearchTerm || lastScannedCode;
-        if (termToUse) {
-            redirectToStore(termToUse, 'sodimac');
-        } else {
-            document.getElementById('info').innerText = "No hay un código escaneado o ingresado para buscar en Sodimac.cl.";
         }
     });
   </script>
