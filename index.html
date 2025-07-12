@@ -9,16 +9,58 @@
     /* Estilos generales del cuerpo de la página */
     body {
       font-family: Arial, sans-serif;
-      background-color: #0062E3; /* Color azul característico de Lider */
+      background-color: #0062E3; /* Color de respaldo si la cámara no carga */
       color: white; /* Texto en blanco para contraste */
       text-align: center; /* Centrar todo el contenido */
-      padding: 20px;
-      margin: 0;
+      padding: 0; /* Elimina padding para que el video ocupe todo */
+      margin: 0; /* Elimina margen para que el video ocupe todo */
+      overflow: hidden; /* Evita barras de desplazamiento si el video se desborda ligeramente */
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh; /* Asegura que ocupe al menos toda la altura de la vista */
+      min-height: 100vh;
+      position: relative; /* Necesario para posicionar elementos hijos */
+    }
+
+    /* Contenedor del video de la cámara a pantalla completa */
+    #scanner-container {
+      position: fixed; /* Fija el contenedor en la ventana de visualización */
+      top: 0;
+      left: 0;
+      width: 100vw; /* 100% del ancho del viewport */
+      height: 100vh; /* 100% del alto del viewport */
+      z-index: -1; /* Envía el contenedor de la cámara al fondo */
+      overflow: hidden; /* Oculta cualquier parte del video que se desborde */
+      background-color: #0062E3; /* Fondo de respaldo si el video tarda en cargar */
+      display: flex; /* Para centrar el video dentro si no es perfecto */
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* El elemento de video dentro del contenedor */
+    #scanner-container video {
+      min-width: 100%; /* Asegura que el video ocupe al menos el 100% del ancho */
+      min-height: 100%; /* Asegura que el video ocupe al menos el 100% del alto */
+      width: auto; /* Permite que el ancho se ajuste automáticamente */
+      height: auto; /* Permite que el alto se ajuste automáticamente */
+      /* object-fit: cover; // Podría usarse si el tamaño del video no es exactamente el del contenedor */
+      display: block; /* Elimina espacios extra */
+    }
+
+    /* Contenedor principal de los elementos de la interfaz de usuario */
+    #content-overlay {
+      position: relative; /* Permite posicionamiento normal dentro de este */
+      z-index: 1; /* Asegura que este contenido esté por encima del video */
+      width: 100%;
+      max-width: 500px; /* Ancho máximo para el contenido legible */
+      padding: 20px;
       box-sizing: border-box; /* Incluye padding en el tamaño total */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      /* Puedes añadir un fondo semitransparente si el texto es difícil de leer sobre el video */
+      /* background-color: rgba(0, 0, 0, 0.3); */
+      border-radius: 8px;
     }
 
     /* Estilos para el logo de Lider */
@@ -27,39 +69,14 @@
       margin-bottom: 20px; /* Espacio debajo del logo */
     }
 
-    /* Estilos para el contenedor del escáner de la cámara */
-    #scanner-container {
-      width: 100%;
-      max-width: 230px; /* Ancho aumentado en un 15% (antes 200px) */
-      height: 172px; /* Altura aumentada en un 15% (antes 150px, redondeado) */
-      margin: auto; /* Centrar horizontalmente */
-      border: 2px solid white; /* Borde blanco alrededor del video */
-      margin-bottom: 20px; /* Espacio debajo del contenedor */
-      position: relative; /* Necesario para posicionar el video dentro */
-      overflow: hidden; /* Oculta cualquier parte del video que se desborde */
-      border-radius: 8px; /* Bordes ligeramente redondeados */
-      display: flex; /* Para centrar el video vertical y horizontalmente si es necesario */
-      justify-content: center;
-      align-items: center;
-    }
-
-    /* Estilos para el elemento de video dentro del contenedor del escáner */
-    #scanner-container video {
-      width: 100%; /* El video ocupa todo el ancho del contenedor */
-      height: 100%; /* El video ocupa toda la altura del contenedor */
-      object-fit: cover; /* Asegura que el video cubra el área, recortando si es necesario */
-      display: block; /* Elimina espacios extra debajo del video */
-    }
-
     /* Estilos para el área de información y resultados */
     #info {
       margin-top: 20px; /* Espacio encima del texto de información */
       font-size: 18px; /* Tamaño de fuente para la información */
-      background-color: rgba(255, 255, 255, 0.1); /* Fondo semitransparente */
+      background-color: rgba(255, 255, 255, 0.2); /* Fondo semitransparente para legibilidad */
       padding: 15px;
       border-radius: 8px;
       width: 100%;
-      max-width: 400px; /* Mantener el ancho para el texto de info */
       box-sizing: border-box;
     }
 
@@ -73,7 +90,6 @@
     #manual-input-container {
       margin-top: 30px; /* Más espacio para separar del escáner */
       width: 100%;
-      max-width: 400px;
       display: flex; /* Usar flexbox para alinear el input y el botón */
       justify-content: center; /* Centrar los elementos flex */
       align-items: center; /* Alinear verticalmente */
@@ -129,17 +145,20 @@
 </head>
 <body>
 
-  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Lider_logo_2020.svg/512px-Lider_logo_2020.svg.png" alt="Lider" class="logo">
-
-  <h1>Escáner de Producto</h1>
-  <p>Escanea un código de barras o ingrésalo manualmente para buscar el producto en <strong>Lider.cl</strong></p>
-
   <div id="scanner-container"></div>
-  <div id="info">Esperando escaneo...</div>
 
-  <div id="manual-input-container">
-    <input type="text" id="manual-code-input" placeholder="Ingresa el código manualmente">
-    <button id="manual-search-button">Buscar Código</button>
+  <div id="content-overlay">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Lider_logo_2020.svg/512px-Lider_logo_2020.svg.png" alt="Lider" class="logo">
+
+    <h1>Escáner de Producto</h1>
+    <p>Escanea un código de barras o ingrésalo manualmente para buscar el producto en <strong>Lider.cl</strong></p>
+
+    <div id="info">Esperando escaneo...</div>
+
+    <div id="manual-input-container">
+      <input type="text" id="manual-code-input" placeholder="Ingresa el código manualmente">
+      <button id="manual-search-button">Buscar Código</button>
+    </div>
   </div>
 
   <script>
@@ -194,6 +213,9 @@
           target: document.querySelector('#scanner-container'), // Dónde renderizar el video
           constraints: {
             facingMode: "environment", // Preferir la cámara trasera en móviles
+            // Puedes ajustar la resolución aquí si la cámara no se ve bien a pantalla completa
+            // width: { min: 640, max: 1280 },
+            // height: { min: 480, max: 720 }
           }
         },
         decoder: {
@@ -204,7 +226,9 @@
         if (err) {
           console.error("Error al iniciar la cámara:", err);
           document.getElementById('info').innerText = "Error al iniciar la cámara. Asegúrate de dar permisos o intenta ingresar el código manualmente.";
-          document.getElementById('scanner-container').style.display = 'none'; // Oculta el contenedor del escáner
+          // Si la cámara no carga, oculta el contenedor del escáner y muestra un fondo azul de respaldo
+          document.getElementById('scanner-container').style.display = 'none';
+          document.body.style.backgroundColor = '#0062E3'; // Asegura el fondo azul
           return;
         }
         console.log("Quagga iniciado correctamente.");
