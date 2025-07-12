@@ -49,7 +49,7 @@
       left: 0;
     }
 
-    /* Líneas de guía para el código de barras */
+    /* Líneas de guía para el código de barras - RESTAURADO */
     #barcode-frame {
         position: absolute;
         top: 50%;
@@ -324,17 +324,16 @@
           });
         });
 
-        // Este es el detector continuo de códigos (Quagga.onDetected)
+        // Este es el detector continuo de códigos (Quagga.onDetected) - RESTAURADO
         Quagga.onDetected(result => {
           if (scannerActive && result && result.codeResult && result.codeResult.code) {
             const codigo = result.codeResult.code;
             console.log("Código detectado:", codigo);
             clearTimeout(timeoutId); // Limpia el temporizador porque se encontró el código
 
-            // *** Nuevo: Feedback visual y pequeña pausa ***
+            // *** Feedback visual y pequeña pausa - RESTAURADO ***
             const barcodeFrame = document.getElementById('barcode-frame');
             barcodeFrame.style.borderColor = '#00FF00'; // Cambia el borde a verde
-            // El mensaje se actualizará después de stopScanner()
             
             // Introduce un pequeño retraso para la confirmación visual
             setTimeout(() => {
@@ -343,14 +342,14 @@
               document.getElementById('info').innerHTML = `¡Código detectado! Procesando: <strong>${codigo}</strong>...`; 
               buscarProductoYRedirigir(codigo); // Procesa el código
             }, 500); // Pausa de 500ms (medio segundo)
-            // *** Fin Nuevo ***
+            // *** Fin Restaurado ***
 
           } else {
             console.log("Detección fallida o resultado nulo en onDetected. Continuar escaneando.");
           }
         });
 
-        // Inicia el temporizador para detener el escaneo si no se detecta nada en SCAN_DURATION_MS
+        // Inicia el temporizador para detener el escaneo si no se detecta nada en SCAN_DURATION_MS - RESTAURADO
         timeoutId = setTimeout(() => {
           if (scannerActive) {
             console.log(`Tiempo de escaneo agotado (${SCAN_DURATION_MS / 1000}s), no se detectó ningún código.`);
@@ -378,7 +377,7 @@
         clearTimeout(timeoutId); // Asegura que el temporizador se limpie
         console.log("Cámara detenida.");
       }
-      // Restablecer el color del borde del recuadro
+      // Restablecer el color del borde del recuadro - RESTAURADO
       const barcodeFrame = document.getElementById('barcode-frame');
       barcodeFrame.style.borderColor = '#FFD700'; // Restablecer a amarillo
 
