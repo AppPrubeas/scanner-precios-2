@@ -44,8 +44,7 @@
       width: auto; /* Permite que el ancho se ajuste automáticamente */
       height: auto; /* Permite que el alto se ajuste automáticamente */
       object-fit: cover; 
-      /* Mueve la imagen de la cámara un 25% a la derecha desde el centro */
-      object-position: 75% center; /* 50% es el centro, 75% mueve 25% a la derecha */
+      object-position: 75% center; /* Mueve la imagen de la cámara un 25% a la derecha desde el centro */
       display: block; /* Elimina espacios extra */
     }
 
@@ -88,9 +87,32 @@
       text-decoration: underline; /* Subrayado para indicar que es un enlace */
     }
 
+    /* Estilos para el contenedor del botón de escaneo */
+    #scan-button-container {
+        margin-top: 20px;
+        margin-bottom: 20px; /* Espacio para separar del input manual */
+    }
+
+    /* Estilos para el botón de escaneo */
+    #scan-button {
+      padding: 15px 30px;
+      background-color: #FFD700; /* Amarillo Lider */
+      color: #0062E3; /* Texto azul Lider */
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 20px;
+      transition: background-color 0.2s ease;
+    }
+
+    #scan-button:hover {
+      background-color: #e6c200; /* Un amarillo ligeramente más oscuro al pasar el mouse */
+    }
+
     /* Estilos para el contenedor de la entrada manual */
     #manual-input-container {
-      margin-top: 30px; /* Más espacio para separar del escáner */
+      margin-top: 30px; /* Más espacio para separar del botón de escaneo */
       width: 100%;
       display: flex; /* Usar flexbox para alinear el input y el botón */
       justify-content: center; /* Centrar los elementos flex */
@@ -153,7 +175,11 @@
     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Lider_logo_2020.svg/512px-Lider_logo_2020.svg.png" alt="Lider" class="logo">
 
     <h1>Escáner de Producto</h1>
-    <p>Escanea un código de barras o ingrésalo manualmente para buscar el producto en <strong>Lider.cl</strong></p>
+    <p>Ten el código de barras centrado en la cámara y presiona "Escanear".</p>
+
+    <div id="scan-button-container">
+        <button id="scan-button">Escanear</button>
+    </div>
 
     <div id="info">Esperando escaneo...</div>
 
@@ -164,6 +190,8 @@
   </div>
 
   <script>
+    let scannerStarted = false; // Variable para controlar si el escáner está activo
+
     /**
      * Extrae la marca o las primeras palabras significativas de un nombre de producto.
      * Esto es una heurística y puede no ser perfecta para todos los nombres.
@@ -181,16 +209,9 @@
       // Divide por espacios y toma las primeras N palabras
       const words = cleanName.split(/\s+/);
 
-      // Reglas heurísticas para intentar obtener la marca o palabras clave relevantes
-      // Puedes ajustar esto. Por ejemplo, tomar solo la primera palabra o las dos primeras.
-      if (words.length > 0) {
-        // Ejemplo: toma la primera palabra como marca (muy básico pero efectivo para muchos casos)
-        // return words[0]; 
-
-        // Ejemplo: toma las primeras 2 palabras, si hay, o solo la primera
-        return words.slice(0, 2).join(' '); 
-      }
-      return cleanName; // Si es una sola palabra, regresa esa palabra
+      // Tomamos las primeras dos palabras para una mejor precisión que solo una,
+      // pero sin el detalle excesivo del nombre completo.
+      return words.slice(0, 2).join(' '); 
     }
 
     /**
@@ -239,64 +260,82 @@
     }
 
     /**
-     * Inicializa y configura el escáner de códigos de barras usando Quagga2.
+     * Inicia y configura el escáner de códigos de barras usando Quagga2.
+     * Solo inicializa la cámara, no empieza a detectar hasta que se llame a Quagga.start().
      */
-    function iniciarScanner() {
+    function initQuagga() {
       Quagga.init({
         inputStream: {
           type: "LiveStream", // Usa el video en tiempo real de la cámara
           target: document.querySelector('#scanner-container'), // Dónde renderizar el video
           constraints: {
             facingMode: "environment", // Preferir la cámara trasera principal.
-            // Opcional: Especificar la resolución deseada para un mejor enfoque y centrado.
             width: { min: 640, ideal: 1280, max: 1920 },
             height: { min: 480, ideal: 720, max: 1080 }
           }
         },
         decoder: {
-          // Tipos de códigos de barras que Quagga debe intentar leer
           readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader"]
         }
       }, function(err) {
         if (err) {
           console.error("Error al iniciar la cámara:", err);
           document.getElementById('info').innerText = "Error al iniciar la cámara. Asegúrate de dar permisos o intenta ingresar el código manualmente.";
-          // Si la cámara no carga, oculta el contenedor del escáner y muestra un fondo azul de respaldo
-          document.getElementById('scanner-container').style.display = 'none';
+          document.getElementById('scanner-container').style.display = 'none'; // Oculta el contenedor del escáner
           document.body.style.backgroundColor = '#0062E3'; // Asegura el fondo azul
           return;
         }
-        console.log("Quagga iniciado correctamente.");
-        Quagga.start(); // Inicia el proceso de escaneo
+        console.log("Quagga inicializado correctamente. Listo para escanear.");
+        // NO llamamos a Quagga.start() aquí. Solo lo haremos con el botón.
       });
 
-      // Evento que se dispara cuando Quagga detecta un código de barras
+      // Este evento se dispara cuando Quagga detecta un código de barras
       Quagga.onDetected(result => {
-        const codigo = result.codeResult.code; // Este es el número del código
+        const codigo = result.codeResult.code;
         console.log("Código detectado:", codigo);
-        Quagga.stop(); // Detener el escáner después de una detección exitosa
-        buscarProductoYRedirigir(codigo); // Inicia el proceso de búsqueda y redirección
+        Quagga.stop(); // Detener el escáner inmediatamente después de la detección
+        scannerStarted = false; // Reiniciar estado
+        document.getElementById('info').innerText = `Código detectado: ${codigo}. Procesando...`;
+        document.getElementById('scan-button').innerText = 'Re-Escanear'; // Cambiar texto del botón
+        buscarProductoYRedirigir(codigo);
       });
     }
 
+    // Función para iniciar o reiniciar el escáner cuando se presiona el botón
+    document.getElementById('scan-button').addEventListener('click', () => {
+      if (!scannerStarted) {
+        Quagga.start();
+        scannerStarted = true;
+        document.getElementById('info').innerText = 'Escaneando... Mantén el código fijo.';
+        document.getElementById('scan-button').innerText = 'Detener Escaneo';
+      } else {
+        Quagga.stop();
+        scannerStarted = false;
+        document.getElementById('info').innerText = 'Escaneo detenido. Presiona "Escanear" para reanudar.';
+        document.getElementById('scan-button').innerText = 'Escanear';
+      }
+    });
+
+
     // Agrega un event listener al botón de búsqueda manual
     document.getElementById('manual-search-button').addEventListener('click', () => {
-      const codigoManual = document.getElementById('manual-code-input').value.trim(); // Obtiene el número del input
+      const codigoManual = document.getElementById('manual-code-input').value.trim();
       if (codigoManual) {
         // Detener Quagga si está activo antes de buscar manualmente para evitar conflictos
-        if (typeof Quagga !== 'undefined' && Quagga.initialized) {
+        if (typeof Quagga !== 'undefined' && Quagga.initialized && scannerStarted) {
             Quagga.stop();
-            console.log("Escáner detenido para búsqueda manual.");
+            scannerStarted = false;
+            document.getElementById('scan-button').innerText = 'Escanear'; // Asegurar que el botón vuelva a su estado original
         }
         document.getElementById('info').innerText = `Buscando código manual: ${codigoManual}...`;
-        buscarProductoYRedirigir(codigoManual); // Realiza la búsqueda con el número del código manual
+        buscarProductoYRedirigir(codigoManual);
       } else {
         document.getElementById('info').innerText = "Por favor, ingresa un código de barras para buscar.";
       }
     });
 
-    // Inicia el escáner cuando la página se ha cargado completamente
-    window.addEventListener('load', iniciarScanner);
+    // Inicializa Quagga (solo la cámara, no el escaneo) cuando la página se carga
+    window.addEventListener('load', initQuagga);
   </script>
 
 </body>
