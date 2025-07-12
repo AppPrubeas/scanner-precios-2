@@ -149,9 +149,10 @@
     #scanner-container video {
         width: 100%;
         height: 100%;
-        object-fit: contain; /* Ajusta el video para que se vea completo dentro del contenedor */
+        object-fit: cover; /* Asegura que el video cubra todo el contenedor */
         object-position: center; /* Centra el contenido del video */
-        transform: scaleX(-1); /* Voltea la imagen horizontalmente si es la cámara frontal */
+        /* OPCIONAL: Si la imagen se ve volteada como un espejo, descomenta la siguiente línea */
+        /* transform: scaleX(-1); */ 
         filter: brightness(1.2); /* Ajuste opcional para mejorar la visibilidad */
     }
 
@@ -207,13 +208,13 @@
     // Variables para el estado y los datos
     let scannerActive = false; // Indica si la cámara está activa
     let timeoutId = null; // Para el temporizador de tiempo de espera del escáner
-    const SCAN_DURATION_MS = 10000; // Aumentado a 10 segundos para dar más tiempo
+    const SCAN_DURATION_MS = 15000; // Aumentado a 15 segundos para dar más tiempo
     let lastScannedCode = null; // Almacena el último código escaneado o ingresado
     let lastSearchTerm = null; // Almacena el último término de búsqueda (nombre o código)
 
     // Instancia de ZXing-JS
     const codeReader = new ZXing.BrowserBarcodeReader();
-    let currentStream = null; // Para guardar la referencia al stream de la cámara
+    // No necesitamos currentStream directamente si usamos codeReader.reset()
 
     // URLs de búsqueda para las tiendas
     const searchUrls = {
@@ -274,7 +275,11 @@
       try {
         const videoInputDevices = await codeReader.getVideoInputDevices();
         if (videoInputDevices.length === 0) {
-            throw new Error('No se encontraron dispositivos de video.');
+            const errorMsg = 'Error: No se encontraron dispositivos de video (cámaras).';
+            document.getElementById('info').innerText = errorMsg;
+            console.error(errorMsg);
+            stopScanner();
+            return;
         }
 
         // Intenta encontrar una cámara trasera (main, environment, back, rear)
@@ -297,6 +302,7 @@
         }
 
         // Decodificar desde el dispositivo de video
+        // El segundo argumento es el ID del elemento donde ZXing inyectará el <video>
         codeReader.decodeFromVideoDevice(selectedDeviceId, 'scanner-container', (result, err) => {
             if (result) {
                 console.log('Código detectado con ZXing:', result.getText());
@@ -313,10 +319,11 @@
                 }
             }
             if (err && !(err instanceof ZXing.NotFoundException)) {
+                // Solo loguea errores que no sean 'NotFoundException' (que es normal mientras escanea)
                 console.error("Error de escaneo con ZXing:", err);
-                // Si es un error real (no solo que no encontró un código aún)
-                if (scannerActive) { // Solo si el escáner sigue activo
+                if (scannerActive) { // Solo si el escáner sigue activo y no es el timeout
                     document.getElementById('info').innerText = `Error en el escáner: ${err.message}.`;
+                    stopScanner(); // Detiene para permitir al usuario reintentar
                 }
             }
         });
@@ -329,16 +336,25 @@
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
           if (scannerActive) {
-            console.log(`Tiempo de escaneo agotado (${SCAN_DURATION_MS / 1000}s), no se detectó ningún código.`);
+            console.warn(`Tiempo de escaneo agotado (${SCAN_DURATION_MS / 1000}s), no se detectó ningún código.`);
             stopScanner();
             document.getElementById('info').innerText = `No se detectó ningún código después de ${SCAN_DURATION_MS / 1000} segundos. Intenta de nuevo o usa el ingreso manual.`;
           }
         }, SCAN_DURATION_MS);
 
       } catch (error) {
-        console.error("Error al iniciar el escáner ZXing:", error);
-        document.getElementById('info').innerText = `Error: ${error.message}. Asegúrate de dar permisos o intenta el ingreso manual.`;
-        stopScanner(); // Asegura que los botones se habiliten
+        // Manejo específico para errores de permisos de la cámara
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            document.getElementById('info').innerText = 'Permiso de cámara denegado. Por favor, habilita el acceso a la cámara en la configuración de tu navegador o dispositivo.';
+            console.error("Permiso de cámara denegado:", error);
+        } else if (error.name === 'NotFoundError') {
+            document.getElementById('info').innerText = 'No se encontró una cámara compatible.';
+            console.error("No se encontró cámara:", error);
+        } else {
+            document.getElementById('info').innerText = `Error al iniciar el escáner: ${error.message}.`;
+            console.error("Error general al iniciar escáner ZXing:", error);
+        }
+        stopScanner(); // Asegura que los botones se habiliten y la interfaz vuelva al estado inicial
       } finally {
         document.getElementById('scan-button').disabled = false;
       }
@@ -347,8 +363,7 @@
     // Función para detener la cámara y volver a la interfaz principal
     async function stopScanner() {
       if (scannerActive) {
-        // Detener el escáner de ZXing-JS
-        codeReader.reset(); // Esto también detiene la cámara
+        codeReader.reset(); // Esto detiene la cámara y libera los recursos
         scannerActive = false;
         clearTimeout(timeoutId);
         console.log("Cámara detenida por ZXing-JS.");
