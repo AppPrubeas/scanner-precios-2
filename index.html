@@ -144,14 +144,41 @@
 
   <script>
     /**
-     * Redirige al usuario a la página de búsqueda de Lider.cl con el código de barras.
+     * Intenta obtener el nombre del producto de Open Food Facts.
+     * Si lo encuentra, usa el nombre para buscar en Lider.cl.
+     * Si no, busca el código directamente en Lider.cl.
      * @param {string} codigo - El código de barras a buscar.
      */
-    function buscarEnLider(codigo) {
-      // Codifica el código de barras para que sea seguro en una URL
-      const urlLider = `https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(codigo)}`;
-      document.getElementById('info').innerHTML = `Código detectado: <strong>${codigo}</strong><br>Redirigiendo a Lider.cl...`;
-      window.open(urlLider, '_blank'); // Abre la URL en una nueva pestaña
+    async function buscarProductoYRedirigir(codigo) {
+      const infoDisplay = document.getElementById('info');
+      infoDisplay.innerHTML = `Código detectado: <strong>${codigo}</strong><br>Buscando información del producto...`;
+
+      const openFoodFactsUrl = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
+      let productName = null;
+
+      try {
+        const response = await fetch(openFoodFactsUrl);
+        const data = await response.json();
+
+        if (data.status === 1 && data.product && data.product.product_name) {
+          productName = data.product.product_name;
+          infoDisplay.innerHTML = `Producto encontrado: <strong>${productName}</strong><br>Redirigiendo a Lider.cl...`;
+          console.log("Nombre de producto de Open Food Facts:", productName);
+        } else {
+          infoDisplay.innerHTML = `Producto no encontrado en Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
+          console.log("Producto no encontrado en Open Food Facts para el código:", codigo);
+        }
+      } catch (err) {
+        console.error("Error al consultar Open Food Facts:", err);
+        infoDisplay.innerHTML = `Error al consultar Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
+      }
+
+      // Decidir qué término de búsqueda usar para Lider.cl
+      const searchTerm = productName ? productName : codigo;
+      const urlLider = `https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(searchTerm)}`;
+      
+      // Abrir la URL en una nueva pestaña
+      window.open(urlLider, '_blank');
     }
 
     /**
@@ -164,8 +191,6 @@
           target: document.querySelector('#scanner-container'), // Dónde renderizar el video
           constraints: {
             facingMode: "environment", // Preferir la cámara trasera en móviles
-            // width: { min: 320, max: 640 }, // Puedes ajustar esto si la cámara es muy grande
-            // height: { min: 240, max: 480 }
           }
         },
         decoder: {
@@ -188,7 +213,7 @@
         const codigo = result.codeResult.code;
         console.log("Código detectado:", codigo);
         Quagga.stop(); // Detener el escáner después de una detección exitosa
-        buscarEnLider(codigo); // Redirige directamente a Lider.cl
+        buscarProductoYRedirigir(codigo); // Inicia el proceso de búsqueda y redirección
       });
     }
 
@@ -202,7 +227,7 @@
             console.log("Escáner detenido para búsqueda manual.");
         }
         document.getElementById('info').innerText = `Buscando código manual: ${codigoManual}...`;
-        buscarEnLider(codigoManual); // Realiza la búsqueda con el código manual
+        buscarProductoYRedirigir(codigoManual); // Realiza la búsqueda con el código manual
       } else {
         document.getElementById('info').innerText = "Por favor, ingresa un código de barras para buscar.";
       }
