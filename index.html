@@ -21,50 +21,6 @@
       box-sizing: border-box;
     }
 
-    /* Contenedor del escáner (cámara) */
-    #scanner-container {
-      display: none; /* Oculta completamente el contenedor cuando no está en uso */
-      position: fixed; /* Ocupa toda la pantalla cuando está visible para tomar la foto */
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background-color: rgba(0, 0, 0, 0.8); /* Fondo negro semitransparente cuando la cámara está activa */
-      z-index: 1000; /* Asegura que esté por encima de otros elementos */
-      display: flex; /* Usa flex para centrar el contenido (video, frame) */
-      justify-content: center;
-      align-items: center;
-      overflow: hidden; /* Para que el video no se desborde */
-      box-sizing: border-box;
-      flex-direction: column; /* Para apilar el video y la guía si se añadiera texto */
-    }
-
-    #scanner-container video {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover; /* Cubre toda la pantalla */
-      position: absolute; /* Permite que el frame se superponga */
-      top: 0;
-      left: 0;
-    }
-
-    /* Líneas de guía para el código de barras - RESTAURADO */
-    #barcode-frame {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 70%; /* Ancho del marco */
-        max-width: 400px;
-        height: 15%; /* Altura del marco, más parecido a un código de barras */
-        border: 2px solid #FFD700; /* Amarillo para el marco */
-        transform: translate(-50%, -50%);
-        z-index: 1001; /* Asegura que el marco esté sobre el video */
-        pointer-events: none; /* Permite que los clics pasen a elementos subyacentes */
-        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7); /* Oscurece el exterior del marco */
-        transition: border-color 0.2s ease-in-out; /* Transición suave para el color del borde */
-    }
-
 
     /* Contenedor principal de los elementos de la interfaz de usuario */
     #content-overlay {
