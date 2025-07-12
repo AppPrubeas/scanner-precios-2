@@ -27,23 +27,34 @@
       width: 80%; /* Ancho del rectángulo */
       max-width: 600px; /* Ancho máximo */
       height: 300px; /* Altura del rectángulo */
-      background-color: #0062E3; /* CAMBIO: Color de fondo coincide con el body */
+      background-color: #0062E3; /* Color de fondo coincide con el body */
       margin: 20px auto;
       overflow: hidden;
       border-radius: 10px;
       display: flex;
       justify-content: center;
       align-items: center;
-      /* Asegurarse de que no haya bordes visibles si el video no cubre 100% */
-      border: 1px solid #0062E3; /* Borde del mismo color que el fondo */
+      border: 1px solid #0062E3;
+      
+      /* --- CAMBIO AQUÍ: OCULTAR INICIALMENTE --- */
+      visibility: hidden; /* Oculta el elemento, pero mantiene su espacio */
+      opacity: 0; /* Lo hace transparente */
+      transition: visibility 0s, opacity 0.5s ease-in-out; /* Animación de aparición */
+      /* ------------------------------------------ */
+    }
+
+    #scanner-container.ready {
+      /* --- CAMBIO AQUÍ: MOSTRAR CUANDO ESTÉ LISTO --- */
+      visibility: visible;
+      opacity: 1;
+      /* ----------------------------------------------- */
     }
 
     #scanner-container video {
       display: block;
       width: 100%;
       height: 100%;
-      object-fit: cover; /* Cubre el rectángulo manteniendo la relación de aspecto */
-      /* No se necesita position: absolute; transform: translate... si width/height 100% y object-fit cover */
+      object-fit: cover;
     }
 
     /* Contenedor principal de los elementos de la interfaz de usuario */
@@ -274,7 +285,6 @@
             audio: false,
             video: { 
                 deviceId: { exact: selectedDeviceId },
-                // Las restricciones ideales pueden seguir siendo útiles para la resolución
                 width: { ideal: window.innerWidth > 720 ? 1280 : 720 },
                 height: { ideal: window.innerWidth > 720 ? 720 : 480 },
                 aspectRatio: { ideal: window.innerWidth > 720 ? 1.777 : 1.333 }
@@ -302,6 +312,17 @@
             Quagga.start();
             scannerStarted = true;
             document.getElementById('info').innerText = 'Cámara lista. Centra el código en el rectángulo y presiona "Escanear".';
+            
+            // --- CAMBIO AQUÍ: MOSTRAR EL CONTENEDOR DE LA CÁMARA CUANDO ESTÉ LISTO ---
+            document.getElementById('scanner-container').classList.add('ready');
+            // ---------------------------------------------------------------------
+          });
+
+          Quagga.onDetected(result => {
+             // Este onDetected solo se ejecutará si Quagga está en modo de escaneo continuo.
+             // Para la funcionalidad de "foto al presionar botón", la detección se hace
+             // con Quagga.decodeSingle en el event listener del botón.
+             // Puedes mantenerlo comentado o eliminarlo si solo deseas el modo de "foto por botón".
           });
         })
         .catch(error => {
@@ -309,56 +330,31 @@
           document.getElementById('info').innerText = "Error al acceder a la cámara. Revisa los permisos e intenta de nuevo.";
           document.getElementById('scanner-container').style.backgroundColor = '#555';
         });
-
-      // Se mantiene el evento onDetected para el modo de escaneo continuo.
-      // Si el objetivo es solo 'tomar foto y analizar', este handler se activaría
-      // en el modo de escaneo continuo (si se vuelve a habilitar).
-      // Para el modo de "foto por botón", la lógica está en el click del botón.
-      // Si solo quieres el modo "foto", puedes eliminar este Quagga.onDetected general.
-      Quagga.onDetected(result => {
-        // En el modo de "foto y analizar", esta función no se usa directamente al presionar el botón.
-        // Se usa Quagga.decodeSingle. Pero si decides volver al escaneo continuo, es útil.
-        // Por ahora, para evitar confusión, comentaré su lógica si solo usas el botón de "foto".
-        // Si quieres que el escáner detecte automáticamente también, puedes dejarla.
-        // Para este caso, dado que el botón ahora "toma una foto", es menos probable que quieras un onDetected constante.
-        // Pero lo dejo para ilustrar la opción.
-        /*
-        const codigo = result.codeResult.code;
-        console.log("Código detectado automáticamente (si escaneo continuo):", codigo);
-        Quagga.stop();
-        scannerStarted = false;
-        document.getElementById('info').innerText = `Código detectado automáticamente: ${codigo}. Procesando...`;
-        document.getElementById('scan-button').innerText = 'Re-Escanear';
-        buscarProductoYRedirigir(codigo);
-        */
-      });
     }
 
     document.getElementById('scan-button').addEventListener('click', () => {
-        // Asegúrate de que la cámara esté activa para tomar la foto
         if (!scannerStarted) {
             document.getElementById('info').innerText = "La cámara no está activa. Recarga la página o revisa los permisos.";
-            // Intenta reiniciar la cámara si no está activa
+            // Si la cámara no está activa, intenta iniciarla de nuevo.
             initQuaggaCamera(); 
             return;
         }
         
         document.getElementById('info').innerText = 'Analizando imagen...';
-        document.getElementById('scan-button').disabled = true; // Deshabilita el botón mientras analiza
+        document.getElementById('scan-button').disabled = true;
         document.getElementById('scan-button').innerText = 'Analizando...';
 
-        // Usa Quagga.decodeSingle para analizar un solo fotograma
         Quagga.decodeSingle({
             inputStream: {
                 name: "Live",
-                type: "LiveStream", // Quagga tomará un fotograma del stream de video activo
-                target: document.querySelector('#scanner-container') // Desde donde tomar el fotograma
+                type: "LiveStream",
+                target: document.querySelector('#scanner-container')
             },
             decoder: {
                 readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader"]
             }
         }, function(result) {
-            document.getElementById('scan-button').disabled = false; // Habilita el botón de nuevo
+            document.getElementById('scan-button').disabled = false;
 
             if (result && result.codeResult) {
                 const codigo = result.codeResult.code;
@@ -368,7 +364,7 @@
             } else {
                 console.log("No se detectó ningún código en la imagen.");
                 document.getElementById('info').innerText = 'No se detectó ningún código. Intenta centrarlo mejor o acércate/aléjate.';
-                document.getElementById('scan-button').innerText = 'Escanear'; // Vuelve al estado inicial
+                document.getElementById('scan-button').innerText = 'Escanear';
             }
         });
     });
