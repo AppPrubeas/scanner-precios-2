@@ -253,7 +253,8 @@
         infoDisplay.innerHTML = `Error al consultar Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
       }
 
-      const urlLider = `https://www.lider.cl/supermercado/search?Ntt=${encodeURIComponent(searchTermForLider)}`;
+      // **CAMBIO CLAVE: Usa 'query' en lugar de 'Ntt' para la URL de Lider.cl**
+      const urlLider = `https://www.lider.cl/supermercado/search?query=${encodeURIComponent(searchTermForLider)}`;
       
       // Abre la URL en una nueva pestaña/ventana
       window.open(urlLider, '_blank');
