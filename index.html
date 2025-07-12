@@ -29,7 +29,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background-color: rgba(0, 0, 0, 0.8); /* Fondo oscuro semitransparente */
+      background-color: rgba(0, 0, 0, 0.8); /* Fondo oscuro semitransparente (si no hay video) */
       z-index: 1000; /* Asegura que esté por encima de otros elementos */
       display: flex; /* Usamos flex para centrar los elementos internos */
       justify-content: center;
@@ -46,40 +46,41 @@
       width: 100%;
       height: 100%;
       object-fit: cover; /* Cubre toda la pantalla */
-      position: absolute; /* Para que el video quede detrás del texto guía y el marco */
+      position: absolute; /* Para que el video quede detrás de cualquier otro contenido */
       top: 0;
       left: 0;
     }
 
-    /* Nuevo estilo para el mensaje de guía dentro del scanner-container */
+    /* Estos elementos ya no son necesarios pero los dejo comentados si necesitas recuperarlos */
+    /*
     #scan-guidance {
-      position: relative; /* Para que esté por encima del video */
+      position: relative;
       z-index: 1001;
-      background-color: rgba(0, 0, 0, 0.6); /* Fondo semitransparente para legibilidad */
-      padding: 12px 25px; /* Más padding para que destaque */
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 12px 25px;
       border-radius: 8px;
-      font-size: 1.4em; /* Más grande */
+      font-size: 1.4em;
       color: white;
-      text-shadow: 1px 1px 3px black; /* Sombra para mejor legibilidad */
-      max-width: 85%; /* Para que el texto no sea demasiado ancho */
+      text-shadow: 1px 1px 3px black;
+      max-width: 85%;
       text-align: center;
-      margin-top: -15vh; /* Ajusta la posición vertical para que no tape el centro */
+      margin-top: -15vh;
     }
 
-    /* Líneas de guía más visuales y efecto de oscurecimiento */
     #barcode-frame {
         position: absolute;
         top: 50%;
         left: 50%;
-        width: 70%; /* Ancho del marco */
-        max-width: 450px; /* Ancho máximo para pantallas grandes */
-        height: 20%; /* Altura del marco, más parecido a un código de barras */
-        border: 3px solid #FFD700; /* Borde más grueso y amarillo llamativo */
-        transform: translate(-50%, -50%); /* Centra el marco */
-        z-index: 1001; /* Asegura que el marco esté sobre el video */
-        pointer-events: none; /* Permite que los clics pasen a elementos subyacentes */
-        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7); /* Oscurece el exterior del marco, creando un "efecto de ventana" */
+        width: 70%;
+        max-width: 450px;
+        height: 20%;
+        border: 3px solid #FFD700;
+        transform: translate(-50%, -50%);
+        z-index: 1001;
+        pointer-events: none;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
     }
+    */
 
     /* Contenedor principal de los elementos de la interfaz de usuario */
     #content-overlay {
@@ -174,8 +175,7 @@
 <body>
 
   <div id="scanner-container">
-    <div id="barcode-frame"></div>
-    <div id="scan-guidance"></div> </div>
+    </div>
 
   <div id="content-overlay">
     <img src="https://images.seeklogo.com/logo-png/29/1/walmart-spark-logo-png_seeklogo-292795.png" alt="Walmart" class="logo">
@@ -292,9 +292,8 @@
       document.getElementById('scanner-container').style.display = 'flex';
       document.getElementById('scan-button').disabled = true; // Deshabilita el botón mientras se activa la cámara
 
-      // Muestra un mensaje inicial de activación
-      document.getElementById('info').innerText = 'Activando cámara...';
-      document.getElementById('scan-guidance').innerText = 'Activando cámara...';
+      // Opcional: Podrías poner un mensaje breve en #info que diga "Activando cámara..."
+      // document.getElementById('info').innerText = 'Activando cámara...'; 
 
       try {
         // Enumera los dispositivos de medios para encontrar cámaras de video
@@ -357,8 +356,7 @@
               Quagga.start(); // Inicia el stream de la cámara (pero no la detección continua)
               scannerActive = true; // El escáner está activo
               cameraStarted = true; // La cámara está lista y visible
-              // Establece el texto de guía solo cuando la cámara está lista
-              document.getElementById('scan-guidance').innerText = 'Centa el código de barras en el recuadro y presiona VOLUMEN ARRIBA.';
+              // Ya no se necesita establecer el texto de guía aquí, el div ha sido eliminado.
               resolve();
             }
           });
@@ -386,10 +384,9 @@
         }
         volumeButtonPressed = true; // Bloquea nuevas activaciones mientras se procesa
 
-        document.getElementById('scan-guidance').innerText = 'Analizando imagen...'; // Muestra un mensaje de procesamiento
-        document.getElementById('scan-button').disabled = true; // Deshabilita el botón principal temporalmente
+        // Ya no hay un #scan-guidance para actualizar en la vista de la cámara
+        // Si quieres un feedback visual, podrías hacer algo con #info en el menú principal después.
         
-        // Decodifica un solo fotograma
         Quagga.decodeSingle({
             inputStream: {
                 name: "Live",
@@ -412,10 +409,9 @@
             } else {
                 // Si no se detecta ningún código
                 console.log("No se detectó ningún código en la foto.");
-                document.getElementById('scan-guidance').innerText = 'No se detectó código. Presiona VOLUMEN ARRIBA de nuevo.';
+                // Ya no hay un #scan-guidance para actualizar aquí.
                 document.getElementById('info').innerText = 'No se detectó ningún código. Intenta de nuevo.';
-                // No detenemos la cámara, permitimos al usuario reintentar
-                document.getElementById('scan-button').disabled = false; // Re-habilita el botón "Escanear" en la vista de la cámara
+                // La cámara permanece activa para reintentar con el botón de volumen.
             }
         });
     }
