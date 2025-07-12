@@ -43,8 +43,8 @@
       min-height: 100%; /* Asegura que el video ocupe al menos el 100% del alto */
       width: auto; /* Permite que el ancho se ajuste automáticamente */
       height: auto; /* Permite que el alto se ajuste automáticamente */
-      object-fit: cover; 
-      object-position: center; /* Centra la imagen de la cámara */
+      object-fit: cover;
+      object-position: 25% center; /* Centra la imagen de la cámara */
       display: block; /* Elimina espacios extra */
     }
 
@@ -183,19 +183,18 @@
     <div id="search-options-container">
         <button id="lider-search-button" class="button-primary">Buscar en Lider.cl</button>
         <button id="sodimac-search-button" class="button-primary">Buscar en Sodimac.cl</button>
-        </div>
+    </div>
   </div>
 
   <script>
-    let scannerStarted = false; // Variable para controlar si el escáner está activo
+    let scannerStarted = false; // Variable para controlar si la cámara está activa
     let lastScannedCode = null; // Almacena el último código escaneado o ingresado
     let lastSearchTerm = null; // Almacena el último término de búsqueda derivado (marca/código)
 
     // Definición de las URLs de búsqueda para diferentes tiendas
     const searchUrls = {
         'lider': 'https://www.lider.cl/supermercado/search?query=',
-        'sodimac': 'https://www.sodimac.cl/sodimac-cl/search/?q=', // Sodimac usa 'q='
-        // 'easy': 'https://www.easy.cl/easy/search/?text=', // Ejemplo si quieres añadir Easy
+        'sodimac': 'https://www.sodimac.cl/sodimac-cl/search/?q=',
     };
 
     /**
@@ -239,12 +238,12 @@
      * @param {string} codigo - El código de barras a buscar.
      */
     async function buscarProductoYRedirigir(codigo) {
-      lastScannedCode = codigo; // Almacena el código para futuras búsquedas en otras tiendas
+      lastScannedCode = codigo;
       const infoDisplay = document.getElementById('info');
       infoDisplay.innerHTML = `Código detectado: <strong>${codigo}</strong><br>Buscando información del producto...`;
 
       const openFoodFactsUrl = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
-      let searchTermForLider = codigo; // Por defecto, usaremos el código si no encontramos nada mejor
+      let searchTermForLider = codigo;
       let productFullName = null;
 
       try {
@@ -268,19 +267,19 @@
         infoDisplay.innerHTML = `Error al consultar Open Food Facts.<br>Redirigiendo a Lider.cl con el código...`;
       }
       
-      lastSearchTerm = searchTermForLider; // Almacena el término de búsqueda derivado
+      lastSearchTerm = searchTermForLider;
 
-      redirectToStore(searchTermForLider, 'lider'); // Redirige a Lider.cl por defecto
+      redirectToStore(searchTermForLider, 'lider');
     }
 
     /**
-     * Inicia y configura el escáner de códigos de barras usando Quagga2.
-     * Solo inicializa la cámara, no empieza a detectar hasta que se llame a Quagga.start().
+     * Inicializa y configura el escáner de códigos de barras usando Quagga2.
+     * Solo inicializa la cámara, no empieza a detectar hasta que se le pase una imagen.
      */
-    function initQuagga() {
+    function initQuaggaCamera() {
       Quagga.init({
         inputStream: {
-          type: "LiveStream",
+          type: "LiveStream", // Sigue usando LiveStream para mostrar la cámara
           target: document.querySelector('#scanner-container'),
           constraints: {
             facingMode: "environment",
@@ -290,7 +289,8 @@
         },
         decoder: {
           readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader"]
-        }
+        },
+        locate: true // Muestra el recuadro de detección
       }, function(err) {
         if (err) {
           console.error("Error al iniciar la cámara:", err);
@@ -299,44 +299,57 @@
           document.body.style.backgroundColor = '#0062E3';
           return;
         }
-        console.log("Quagga inicializado correctamente. Listo para escanear.");
+        console.log("Quagga inicializado correctamente. Cámara en vivo.");
+        Quagga.start(); // Inicia el flujo de video, pero no la detección automática
+        scannerStarted = true; // La cámara está funcionando
+        document.getElementById('info').innerText = 'Cámara lista. Centra el código y presiona "Escanear".';
       });
 
-      Quagga.onDetected(result => {
-        const codigo = result.codeResult.code;
-        console.log("Código detectado:", codigo);
-        Quagga.stop();
-        scannerStarted = false;
-        document.getElementById('info').innerText = `Código detectado: ${codigo}. Procesando...`;
-        document.getElementById('scan-button').innerText = 'Re-Escanear';
-        buscarProductoYRedirigir(codigo);
-      });
+      // No usamos Quagga.onDetected aquí, ya que la detección se hará manualmente.
     }
 
     // Event Listener para el botón de ESCANEAR
     document.getElementById('scan-button').addEventListener('click', () => {
-      if (!scannerStarted) {
-        Quagga.start();
-        scannerStarted = true;
-        document.getElementById('info').innerText = 'Escaneando... Mantén el código fijo.';
-        document.getElementById('scan-button').innerText = 'Detener Escaneo';
-      } else {
-        Quagga.stop();
-        scannerStarted = false;
-        document.getElementById('info').innerText = 'Escaneo detenido. Presiona "Escanear" para reanudar.';
-        document.getElementById('scan-button').innerText = 'Escanear';
-      }
+        // Asegúrate de que la cámara esté activa para tomar la foto
+        if (!scannerStarted) {
+            document.getElementById('info').innerText = "La cámara no está activa. Recarga la página o revisa los permisos.";
+            return;
+        }
+        
+        document.getElementById('info').innerText = 'Analizando imagen...';
+        document.getElementById('scan-button').disabled = true; // Deshabilita el botón mientras analiza
+        document.getElementById('scan-button').innerText = 'Analizando...';
+
+        // Usa Quagga.decodeSingle para analizar un solo fotograma
+        Quagga.decodeSingle({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream", // Quagga tomará un fotograma del stream de video activo
+                target: document.querySelector('#scanner-container') // Desde donde tomar el fotograma
+            },
+            decoder: {
+                readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "ean_8_reader"]
+            }
+        }, function(result) {
+            document.getElementById('scan-button').disabled = false; // Habilita el botón de nuevo
+
+            if (result && result.codeResult) {
+                const codigo = result.codeResult.code;
+                console.log("Código detectado en imagen:", codigo);
+                document.getElementById('scan-button').innerText = 'Re-Escanear';
+                buscarProductoYRedirigir(codigo);
+            } else {
+                console.log("No se detectó ningún código en la imagen.");
+                document.getElementById('info').innerText = 'No se detectó ningún código. Intenta centrarlo mejor o acércate/aléjate.';
+                document.getElementById('scan-button').innerText = 'Escanear'; // Vuelve al estado inicial
+            }
+        });
     });
 
     // Event Listener para el botón de BÚSQUEDA MANUAL
     document.getElementById('manual-search-button').addEventListener('click', () => {
       const codigoManual = document.getElementById('manual-code-input').value.trim();
       if (codigoManual) {
-        if (typeof Quagga !== 'undefined' && Quagga.initialized && scannerStarted) {
-            Quagga.stop();
-            scannerStarted = false;
-            document.getElementById('scan-button').innerText = 'Escanear';
-        }
         document.getElementById('info').innerText = `Buscando código manual: ${codigoManual}...`;
         buscarProductoYRedirigir(codigoManual);
       } else {
@@ -357,7 +370,6 @@
 
     // Event Listener para el botón de búsqueda en Sodimac
     document.getElementById('sodimac-search-button').addEventListener('click', () => {
-        // Para Sodimac, si no tenemos un nombre de producto, es mejor usar el código.
         const termToUse = lastSearchTerm || lastScannedCode; 
         if (termToUse) {
             redirectToStore(termToUse, 'sodimac');
@@ -366,8 +378,8 @@
         }
     });
 
-    // Inicializa Quagga (solo la cámara, no el escaneo) cuando la página se carga
-    window.addEventListener('load', initQuagga);
+    // Inicializa la cámara (solo el flujo de video, no el escaneo automático) cuando la página se carga
+    window.addEventListener('load', initQuaggaCamera);
   </script>
 
 </body>
